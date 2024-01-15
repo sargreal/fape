@@ -7,15 +7,9 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="scala-2.124" level="project" />
-    <orderEntry type="library" name="scala-2.123" level="project" />
     <orderEntry type="library" name="target" level="project" />
     <orderEntry type="library" name="scala-2.12" level="project" />
     <orderEntry type="library" name="scala-2.121" level="project" />
     <orderEntry type="library" name="scala-2.122" level="project" />
-    <orderEntry type="module" module-name="main1" />
-    <orderEntry type="module" module-name="anml-parser" />
-    <orderEntry type="module" module-name="constraints" />
-    <orderEntry type="module" module-name="test1" />
   </component>
 </module>
