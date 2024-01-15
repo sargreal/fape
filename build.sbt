@@ -21,7 +21,7 @@ inThisBuild(List(
 lazy val commonSettings = Seq(
   crossPaths := true,
   exportJars := true, // insert other project dependencies in oneJar
-  javaOptions in run ++= Seq("-Xmx3000m", "-ea"),
+  javaOptions in run ++= Seq("-Xmx8000m", "-ea"),
   javacOptions in compile ++= Seq("-Xlint"),
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
   javacOptions in doc ++= Seq("-Xdoclint:none"),
