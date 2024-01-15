@@ -23,7 +23,7 @@ class InstanceManager(val refCounter: RefCounter) {
   // predefined ANML types and instances
   addType(NON_NUM_SOURCE_TYPE,"")
   addType("boolean", "")
-//  addType("integer", "")
+  addType("integer", "")
   addInstance("true", "boolean", refCounter)
   addInstance("false", "boolean", refCounter)
   addType("typeOfUnknown", "")
