@@ -311,7 +311,7 @@ public class Planner {
 
             numExpandedPartialPlans++;
 
-            TinyLogger.LogInfo(plan.getState(), "\nCurrent plan: [%s]", plan.getID());
+            TinyLogger.LogInfo(plan.getState(), "\nCurrent plan: [%s,depth=%s]", plan.getID(), plan.getDepth());
 
             List<Resolver> resolvers = f.getResolvers(plan.getState(), this);
             // make sure resolvers are always in the same order (for reproducibility)
@@ -389,6 +389,8 @@ public class Planner {
                         searchView.setProperty(next, SearchView.COMMENT, hrComment);
                     }
                 } catch (InconsistencyException e) {
+                    //TinyLogger.LogInfo(plan.getState(), "     Inconsistency when applying: %s", next.getID());
+                    // e.printStackTrace();
                     if(options.displaySearch) {
                         searchView.addNode(next);
                         searchView.setDeadEnd(next);
@@ -400,6 +402,8 @@ public class Planner {
             plan.setExpanded();
             return children;
         } catch (InconsistencyException e) {
+            // TinyLogger.LogInfo(plan.getState(), "     Inconsistency while expanding: %s", plan.getID());
+            // e.printStackTrace();
             if(options.displaySearch) {
                 searchView.setDeadEnd(plan);
                 searchView.setProperty(plan, SearchView.COMMENT, e.toString());
