@@ -595,7 +595,7 @@ public class PartialPlan implements Reporter {
 
         // needs time points to be defined
         for(Task t : chronicle.tasks()) {
-            csp.stn().enforceBefore(t.start(), t.end());
+            enforceBefore(t.start(), t.end());
             enforceBefore(pb.start(), t.start());
 
             if(chronicle.container().nonEmpty() && chronicle.container().get() instanceof Action)
