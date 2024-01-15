@@ -1,6 +1,7 @@
+resolvers += "Akka library repository".at("https://repo.akka.io/maven")
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "latest.integration",
+  "com.typesafe.akka" %% "akka-actor-typed" % "latest.integration",
 
   // akka to use slf4j, config in resources/application.conf
   "com.typesafe.akka" %% "akka-slf4j" % "latest.integration",
