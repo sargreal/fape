@@ -43,14 +43,16 @@ trait STNU extends STN {
   override def deepCopy(): STNU
 
   /** Returns a list of all timepoints in this STNU, associated with a flag giving its status
-    * (contingent or controllable. */
+    * (contingent, dispatchable or structural). */
   def timepoints : IList[TPRef]
 
   final def getEndTimePoint: Option[TPRef] = end
 
   final def getStartTimePoint: Option[TPRef] = start
 
+  /** Returns the minimum delay from u to v. */
   def getMinDelay(u:TPRef, v:TPRef) : Int
+  /** Returns the maximum delay from u to v. */
   def getMaxDelay(u: TPRef, v:TPRef) : Int
 
   /** Returns a list of constraints that do not involve any structural timepoints.
