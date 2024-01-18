@@ -3,7 +3,7 @@ name := "fape-meta"
 // global settings 
 
 inThisBuild(List(
-    scalaVersion := "2.12.7",
+    scalaVersion := "2.12.18",
     // These are normal sbt settings to configure for release, skip if already defined
     organization := "com.github.arthur-bit-monnot",
     licenses := Seq("BSD-2-Clause" -> url("https://opensource.org/licenses/BSD-2-Clause")),
@@ -20,20 +20,21 @@ inThisBuild(List(
 
 lazy val commonSettings = Seq(
   crossPaths := true,
-  exportJars := true, // insert other project dependencies in oneJar
-  javaOptions in run ++= Seq("-Xmx8000m", "-ea"),
-  javacOptions in compile ++= Seq("-Xlint"),
+  exportJars := true, // insert other project dependencies / oneJar
+  run / fork := true,
+  run / javaOptions ++= Seq("-Xmx8000m", "-ea"),
+  compile / javacOptions  ++= Seq("-Xlint"),
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
-  javacOptions in doc ++= Seq("-Xdoclint:none"),
+  doc / javacOptions ++= Seq("-Xdoclint:none"),
   scalacOptions ++= Seq(
     "-opt:l:method",
     "-Xdisable-assertions"
   ),
-  test in assembly := {},
-  assemblyMergeStrategy in assembly := {
+  assembly / test := {},
+  assembly / assemblyMergeStrategy := {
     case PathList("org", "w3c", xs @ _*)         => MergeStrategy.first
     case x =>
-      val oldStrategy = (assemblyMergeStrategy in assembly).value
+      val oldStrategy = (assembly / assemblyMergeStrategy).value
       oldStrategy(x)
   },
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test",

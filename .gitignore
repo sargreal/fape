@@ -5,3 +5,4 @@ target/
 log/
 travis/local.*
 *~
+.bsp/
