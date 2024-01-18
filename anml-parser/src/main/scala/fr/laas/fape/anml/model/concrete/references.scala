@@ -55,7 +55,7 @@ class GlobalRef(val id:Int) extends UniquelyIdentified {
   override final val hashCode = id
 
   override def equals(o:Any) = {
-    if(this.getClass != o.getClass) {
+    if(o == null || this.getClass != o.getClass) {
       false
     } else {
       this.id == o.asInstanceOf[GlobalRef].id
@@ -117,6 +117,8 @@ class TPRef(id:Int) extends Variable(id) {
   def this(refCounter: RefCounter) = this(refCounter.nextTP())
 
   val genre = new TimepointType
+
+  override def toString = "tp"+id//+"("+genre+")"
 }
 
 
