@@ -39,6 +39,24 @@ object Utils {
     new ChronicleInsertion(goal)
   }
 
+  /**
+    * Builds a task from a string of the form:
+    *   name(arg1, arg2, ...)[deadline=deadline]
+    * @param delayedTask
+    * @return the task as a ChronicleInsertion
+    */
+  def buildTask(delayedTask: String): ChronicleInsertion = {
+    val name = delayedTask.split("\\(")(0)
+    val args = delayedTask.split("\\(")(1).split("\\)")(0).split(",").map(_.trim).toList
+    // Deadline is optional
+    val deadline = if(delayedTask.contains("@deadline")) {
+      delayedTask.split("@deadline=")(1).split("]")(0).toInt
+    } else {
+      -1
+    }
+    buildTask(name, args, deadline)
+  }
+
   def buildTask(name: String, args: List[String], deadline: Int = -1) = {
     assert(RefCounter.useGlobalCounter)
     val goal = new Chronicle
