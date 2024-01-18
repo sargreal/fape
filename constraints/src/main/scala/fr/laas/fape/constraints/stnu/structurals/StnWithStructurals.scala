@@ -121,61 +121,67 @@ final class StnWithStructurals(private var nonRigidIndexes: Array[Int], // map: 
     id
   }
 
-  // TODO: this method was removed as its implementation require non final fields that led to an important runtime cost.
+  /** TODO: this method was removed as its implementation require non final fields that led to an important runtime cost. */
   def forceExecutionTime(tp: TPRef, time: Int): Unit =
-    throw new UnsupportedOperationException("This method is temporarily unsupported until a better implementation is found.")
-//  {
-//    def neighborhood(tp: TPRef) =
-//      if(rigidRelations.isAnchor(tp))
-//        rigidRelations.getTimepointsAnchoredTo(tp).toSet
-//      else
-//        rigidRelations.getTimepointsAnchoredTo(rigidRelations.anchorOf(tp)).toSet + rigidRelations.anchorOf(tp) -tp
-//
-//    try {
-//      this.clone().setTime(tp, time)
-//      // no inconsistent network exception, simply propagate those constraints (much cheaper)
-//      setTime(tp, time)
-//      // if tp is contingent, remove its incoming contingent link
-//      if(tp.genre.isContingent)
-//        contingentLinks = contingentLinks.filter(c => !(c.dst == tp))
-//      executed += tp
-//    } catch {
-//      case e:InconsistentTemporalNetwork =>
-//        // we have conflicting constraint, remove any constraint to previously executed timepoints (directly or through anchored relations)
-//        val directAttached = neighborhood(tp) + tp
-//        val allGrounded = executed.flatMap(neighborhood(_)) ++ executed
-//
-//        val newEdges = originalEdges.filter(e => {
-//          if(allGrounded.intersect(directAttached).nonEmpty) {
-//            // drop all edges to tp
-//            e.from != tp && e.to != tp
-//
-//          } else {
-//            // drop all edges related the executed set and our neighborhood (which include ourselves)
-//            if(allGrounded.contains(e.from) && directAttached.contains(e.to)) false
-//            else if(directAttached.contains(e.from) && allGrounded.contains(e.to)) false
-//            else true
-//          }})
-//        // if tp is contingent, its incoming contingent link
-//        val newContingents = contingentLinks.filter(c => !(c.dst == tp))
-//
-//        // remove everything
-//        nonRigidIndexes = new JMap()
-//        timepointByIndex = mutable.ArrayBuffer()
-//        dist = new DistanceMatrix()
-//        rigidRelations = new RigidRelations()
-//        contingentLinks = mutable.ArrayBuffer()
-//        originalEdges = List()
-//
-//        // rebuild from scratch
-//        setTime(tp, time)
-//        executed += tp
-//        for (e <- newEdges)
-//          addMaxDelay(e.from, e.to, e.value)
-//        for (ctg <- newContingents)
-//          addConstraint(ctg)
-//    }
-//  }
+    // throw new UnsupportedOperationException("This method is temporarily unsupported until a better implementation is found.")
+    {
+      def neighborhood(tp: TPRef) =
+        if (rigidRelations.isAnchor(tp))
+          rigidRelations.getTimepointsAnchoredTo(tp).toSet
+        else
+          rigidRelations
+            .getTimepointsAnchoredTo(rigidRelations.anchorOf(tp))
+            .toSet + rigidRelations.anchorOf(tp) - tp
+
+      try {
+        this.clone().setTime(tp, time)
+        // no inconsistent network exception, simply propagate those constraints (much cheaper)
+        setTime(tp, time)
+        // if tp is contingent, remove its incoming contingent link
+        if (tp.genre.isContingent)
+          contingentLinks = contingentLinks.filter(c => !(c.dst == tp))
+        executed += tp
+      } catch {
+        case e: InconsistentTemporalNetwork =>
+          // we have conflicting constraint, remove any constraint to previously executed timepoints (directly or through anchored relations)
+          val directAttached = neighborhood(tp) + tp
+          val allGrounded = executed.flatMap(neighborhood(_)) ++ executed
+
+          val newEdges = originalEdges.filter(e => {
+            if (allGrounded.intersect(directAttached).nonEmpty) {
+              // drop all edges to tp
+              e.from != tp && e.to != tp
+
+            } else {
+              // drop all edges related the executed set and our neighborhood (which include ourselves)
+              if (allGrounded.contains(e.from) && directAttached.contains(e.to))
+                false
+              else if (
+                directAttached.contains(e.from) && allGrounded.contains(e.to)
+              ) false
+              else true
+            }
+          })
+          // if tp is contingent, its incoming contingent link
+          val newContingents = contingentLinks.filter(c => !(c.dst == tp))
+
+          // remove everything
+          nonRigidIndexes = new Array(nonRigidIndexes.length)
+          timepointByIndex = mutable.ArrayBuffer()
+          dist = new DistanceMatrix()
+          rigidRelations = new RigidRelations()
+          contingentLinks = mutable.ArrayBuffer()
+          originalEdges = List()
+
+          // rebuild from scratch
+          setTime(tp, time)
+          executed += tp
+          for (e <- newEdges)
+            addMaxDelay(e.from, e.to, e.value)
+          for (ctg <- newContingents)
+            addConstraint(ctg)
+      }
+    }
 
   def addMinDelay(from:TPRef, to:TPRef, minDelay:Int) =
     addEdge(to, from, -minDelay)
