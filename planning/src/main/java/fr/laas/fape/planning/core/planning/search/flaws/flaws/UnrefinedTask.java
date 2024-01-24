@@ -51,4 +51,9 @@ public class UnrefinedTask extends Flaw {
         assert o instanceof UnrefinedTask;
         return ((UnrefinedTask) o).task.start().id() - task.start().id();
     }
+
+    @Override
+    public String toString() {
+        return "UnrefinedTask("+task+")";
+    }
 }

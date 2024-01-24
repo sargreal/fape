@@ -5,4 +5,7 @@ public class FAPEException extends RuntimeException {
     public FAPEException(String st) {
         super(st);
     }
+    public FAPEException(String st, Throwable t) {
+        super(st, t);
+    }
 }

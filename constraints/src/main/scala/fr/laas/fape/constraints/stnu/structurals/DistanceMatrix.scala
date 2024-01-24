@@ -104,7 +104,7 @@ final class DistanceMatrix(
     */
   def enforceDist(a: Int, b: Int, d: Int): Unit = {
     if(plus(d, dists(b)(a)) < 0)
-      throw new InconsistentTemporalNetwork
+      throw new InconsistentTemporalNetwork("Negative cycle detected, cannot enforce distance "+a+"->"+b+"="+d + " when "+b+"->"+a+"="+dists(b)(a))
     if(d >= dists(a)(b))
       return // constraint is dominated
 

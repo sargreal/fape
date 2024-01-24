@@ -68,5 +68,5 @@ trait STN {
   /** Makes an independent clone of this STN. */
   def deepCopy() : STN
 
-  def toStringRepresentation : String = ???
+  def toStringRepresentation : String
 }

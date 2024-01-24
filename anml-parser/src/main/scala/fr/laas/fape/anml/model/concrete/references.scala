@@ -61,6 +61,8 @@ class GlobalRef(val id:Int) extends UniquelyIdentified {
       this.id == o.asInstanceOf[GlobalRef].id
     }
   }
+
+  def toInt = id
 }
 
 /** Reference to a concrete [[Action]]. */

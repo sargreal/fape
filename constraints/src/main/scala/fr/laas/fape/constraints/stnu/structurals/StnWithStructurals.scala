@@ -256,11 +256,19 @@ final class StnWithStructurals(
       if (rigidRelations.isAnchored(b))
         (rigidRelations.anchorOf(b), rigidRelations.distToAnchor(b))
       else (b, 0)
-    dist.enforceDist(
-      toIndex(aRef),
-      toIndex(bRef),
-      DistanceMatrix.plus(DistanceMatrix.plus(aToRef, t), refToB)
-    )
+    try {
+      dist.enforceDist(
+        toIndex(aRef),
+        toIndex(bRef),
+        DistanceMatrix.plus(DistanceMatrix.plus(aToRef, t), refToB)
+      )
+    } catch {
+      case e: InconsistentTemporalNetwork =>
+        throw new InconsistentTemporalNetwork(
+          "Inconsistent network after adding edge " + a + " -> " + b + " = " + t,
+          e
+        )
+    }
   }
 
   def addConstraint(c: TemporalConstraint): Unit = {
@@ -694,5 +702,18 @@ final class StnWithStructurals(
         )
         .toList ++ contingentLinks
     )
+  }
+
+  override def toStringRepresentation: String = {
+    val sb = new StringBuilder
+    sb.append("Timepoints:\n")
+    for (tp <- timepoints.asScala) {
+      sb.append("  " + tp + "\n")
+    }
+    sb.append("Constraints:\n")
+    for (c <- getOriginalConstraints.asScala.distinct) {
+      sb.append("; " + c)
+    }
+    sb.toString()
   }
 }

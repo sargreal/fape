@@ -41,6 +41,7 @@ import fr.laas.fape.anml.pending.StateVariable;
 import fr.laas.fape.constraints.MetaCSP;
 import fr.laas.fape.constraints.bindings.InSetConstraint;
 import fr.laas.fape.constraints.stnu.Controllability;
+import fr.laas.fape.constraints.stnu.InconsistentTemporalNetwork;
 import scala.Option;
 import scala.Tuple2;
 
@@ -561,6 +562,7 @@ public class PartialPlan implements Reporter {
      * @param tc The TemporalConstraint to insert.
      */
     private void apply(Chronicle mod, TemporalConstraint tc) {
+        try {
         if(tc instanceof MinDelayConstraint) {
             csp.addMinDelay(tc.src(), tc.dst(), translateToCSPVariable(((MinDelayConstraint) tc).minDelay()));
         } else if(tc instanceof ContingentConstraint) {
@@ -571,6 +573,9 @@ public class PartialPlan implements Reporter {
                     translateToCSPVariable(cc.max()));
         } else {
             throw new UnsupportedOperationException("Temporal contrainst: "+tc+" is not supported yet.");
+            }
+        } catch (InconsistentTemporalNetwork e) {
+            throw new FAPEException("Inconsistent temporal network when applying constraint "+tc, e);
         }
     }
 

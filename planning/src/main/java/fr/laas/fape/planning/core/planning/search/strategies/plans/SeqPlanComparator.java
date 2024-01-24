@@ -21,12 +21,17 @@ public class SeqPlanComparator extends PartialPlanComparator {
     }
 
     @Override
+    public String toString() {
+        return shortName();
+    }
+
+    @Override
     public String shortName() {
-        String ret = "";
+        String ret = "seqenceComparator(";
         for(PartialPlanComparator comp : comparators) {
             ret += comp.shortName() + ",";
         }
-        return ret.substring(0, ret.length()-1);
+        return ret.substring(0, ret.length()-1) + ")";
     }
 
     @Override

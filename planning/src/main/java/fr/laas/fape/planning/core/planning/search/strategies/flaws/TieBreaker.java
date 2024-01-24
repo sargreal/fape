@@ -36,7 +36,7 @@ public class TieBreaker implements FlawComparator {
 
         assert f1.getClass() == f2.getClass();
         int finalComp = f1.compareTo(f2);
-        assert finalComp != 0;
+        assert finalComp != 0 : "Two flaws are equal: "+f1+" and "+f2;
         return finalComp;
     }
 }
