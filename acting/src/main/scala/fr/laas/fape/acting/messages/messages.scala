@@ -11,12 +11,25 @@ import scala.concurrent.duration.FiniteDuration
 
 
 sealed trait Event
+
+sealed trait ClockEvent extends Event
+case object InternalTick extends ClockEvent
+// case class GetTime(actorRef: ActorRef[Time]) extends ClockEvent
+case class RegisterTickListener(actorRef: ActorRef[Tick]) extends ClockEvent
+case class UnregisterTickListener(actorRef: ActorRef[Tick]) extends ClockEvent
+case class ReplyAt(val timepoint: Int, val reference:Int, val actorRef: ActorRef[TimedReply]) extends ClockEvent
+
+
+sealed trait ClockReply extends Event
+case class Tick(timepoint: Int) extends ClockReply with ManagerEvent with DispatchEvent
+// case class Time(timepoint: Int) extends ClockReply with ManagerEvent
+case class TimedReply(timepoint: Int, reference: Int) extends ClockReply with DispatchEvent
+
 sealed trait ManagerEvent extends Event
 
 final case class AddGoal(goal: PartialPlanModification) extends ManagerEvent
 final case class TimepointExecuted(tp: TPRef, time: Int) extends ManagerEvent
 final case class TimepointActive(tp: TPRef) extends ManagerEvent
-case object Tick extends ManagerEvent
 
 sealed trait PlannerEvent extends Event
 
@@ -34,17 +47,16 @@ case class PlanningTimedOut(reqID: Int) extends PlannerReply
 
 sealed trait DispatchEvent extends Event
 
-case class ActiveTimepointNotification(action: ActRef, timepointActive: TimepointActive) extends DispatchEvent
-case class ExecutionRequest(action: Action, plan: PartialPlan, actorRef: ActorRef[DispatchReply]) extends DispatchEvent {
+case class ActiveTimepointNotification(action: ActRef, timepointActive: TimepointActive) extends DispatchEvent with ClockReply
+case class ExecutionRequest(action: Action, plan: PartialPlan, actorRef: ActorRef[DispatchReply]) extends DispatchEvent with ClockReply {
 
   def name = action.name
   def parameters = action.args.asScala.map(a => plan.valuesOf(a).get(0).instance).toList
 }
 
-
 sealed trait DispatchReply extends ManagerEvent
 
-case class DispatchSuccess(a: Action) extends DispatchReply
+case class DispatchSuccess(a: Action, timepoint: Int) extends DispatchReply
 case class DispatchFailed(req: ExecutionRequest) extends DispatchReply
 // case class DispatchExecute(a: AtomicAction)
 

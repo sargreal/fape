@@ -19,6 +19,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
 import fr.laas.fape.anml.model.concrete.ActionStatus
+import fr.laas.fape.planning.core.planning.states.modification.ActionInsertion
 
 object ActivityManager {
   private case object TimerKey
@@ -35,12 +36,12 @@ object ActivityManager {
 
   case object MNothing extends MData
 
-  case class MPlanner(planner: Planner) extends MData
+  // case class MPlanner(planner: Planner) extends MData
 
-  case class MPendingGoals(state: PPlan, pendingGoals: List[String])
-      extends MData
+  // case class MPendingGoals(state: PPlan, pendingGoals: List[String])
+  //     extends MData
 
-  case class FullPlan(val plan: PPlan) extends MData {
+  case class FullPlan(val plan: PPlan, val network: DispatchableNetwork) extends MData {
     lazy val actionStarts: Map[TPRef, Action] =
       plan.getAllActions.asScala.map(a => (a.start, a)).toMap
     lazy val actionEnds: Map[TPRef, Action] =
@@ -62,12 +63,12 @@ object ActivityManager {
 
   case class SetGoal(goal: String)
 
-  def apply(): Behavior[ManagerEvent] = Behaviors.setup { context =>
+  def apply(clock: ActorRef[ClockEvent]): Behavior[ManagerEvent] = Behaviors.setup { context =>
+    clock ! RegisterTickListener(context.self)
     val planner = context.spawn(PlanningActor(), name = "planner")
-    val dispatcher = context.spawn(DispatchActor(), name = "dispatcher")
-    Behaviors.withTimers(timers =>
-      new ActivityManager(timers, planner, dispatcher).idle(MNothing)
-    )
+    val dispatcher = context.spawn(DispatchActor(clock), name = "dispatcher")
+    // FIXME: this is a hack to make the planner and dispatcher actors available in the ActivityManager. Not sure if this is the best way to do it. 
+    new ActivityManager(clock, planner, dispatcher).idle(MNothing) 
   }
 
 }
@@ -75,24 +76,22 @@ object ActivityManager {
 import fr.laas.fape.acting.ActivityManager._
 
 class ActivityManager(
-    timers: TimerScheduler[ManagerEvent],
+    clock: ActorRef[ClockEvent],
     planner: ActorRef[PlannerEvent],
     dispatcher: ActorRef[DispatchEvent]
 ) {
 
-  timers.startTimerWithFixedDelay(TimerKey, Tick, 0.seconds, Clock.interval.milli)
 
   private var currentReqID = -1
   private val goals = new ArrayBuffer[PartialPlanModification]()
   private val executed = mutable.Map[TPRef, Int]()
   private val notifiedActive = mutable.Set[TPRef]()
+  private val executedActions = new ArrayBuffer[Action]()
 
   private def getReqID: Int = {
     currentReqID += 1
     currentReqID
   }
-
-  private def t = Clock.time
 
   private def idle(data: MData): Behavior[ManagerEvent] = Behaviors.setup { context =>
     Behaviors.receiveMessage[ManagerEvent] { message =>
@@ -100,10 +99,12 @@ class ActivityManager(
         case (AddGoal(goal), MNothing) =>
           integrateNewGoal(goal, context)
           waitingForPlan(MNothing)
-        case (Tick, _) => 
-          Clock.advanceTime
+        case (AddGoal(goal), x: FullPlan) =>
+          integrateNewGoal(goal, context, x.plan)
+          waitingForPlan(x)
+        case (Tick(t), x) => 
           context.log.debug(s"[$t] Idle")
-          idle(MNothing)
+          idle(x)
       }
     }
   }
@@ -115,25 +116,39 @@ class ActivityManager(
           case (AddGoal(goal), MNothing) =>
             integrateNewGoal(goal, context)
             waitingForPlan(MNothing)
-          case (NoPlanExists(reqID), MNothing) =>
+          case (AddGoal(goal), x: FullPlan) =>
+            integrateNewGoal(goal, context, x.plan)
+            waitingForPlan(x)
+          case (NoPlanExists(reqID), x) =>
             context.log.info(s"No plan exists for request $reqID")
-            idle(MNothing)
-          case (PlanFound(sol, reqID), MNothing) =>
             if (reqID < currentReqID)
-              waitingForPlan(MNothing)
+              waitingForPlan(x)
+            else
+              idle(x)
+          case (PlanFound(sol, reqID), x) =>
+            if (reqID < currentReqID)
+              waitingForPlan(x)
             else {
               if (!executed.contains(sol.pb.start))
                 executed += ((sol.pb.start, 0))
-              // Set all actions to pending
-              sol.getAllActions.asScala.foreach(
-                _.setStatus(ActionStatus.PENDING)
+              context.log.info(s"Plan: ")
+              val actions = Printer.actionsInPlan(sol).split("\n")
+              actions.foreach(context.log.info(_))
+              val dispatchNet = DispatchableNetwork.getDispatchableNetwork(
+                sol.csp.stn,
+                sol.csp.stn.timepoints.asScala.toSet.asJava
               )
-              dispatching(FullPlan(sol))
+              dispatching(FullPlan(sol, dispatchNet))
             }
-          case (Tick, MNothing) => 
-            Clock.advanceTime
+          case (Tick(t), x) => 
             context.log.debug(s"[$t] Waiting for plan")
-            waitingForPlan(MNothing)
+            waitingForPlan(x)
+          case (DispatchSuccess(a, t), x: FullPlan) =>
+            context.log.info(s"[$t] Action ${Printer.action(x.plan, a)} executed successfully while replanning")
+            if (!executed.contains(a.end)) {
+              executed += ((a.end, t))
+            }
+            waitingForPlan(x)
             
         }
       }
@@ -144,43 +159,43 @@ class ActivityManager(
       Behaviors.receiveMessage[ManagerEvent] { message =>
         (message, data) match {
           case (
-                Tick,
+                Tick(t),
                 x: FullPlan
               ) => // there should be no pending goals while dispatching
-            
-            Clock.advanceTime
 
             context.log.debug(s"[$t] Current State: ")
             val actions = Printer.actionsInPlan(x.plan).split("\n")
             actions.foreach(context.log.debug(_))
             // x.plan.getAllActions.asScala.foreach(a => context.log.debug(s"${a.name} ${a.start} ${a.end}"))
 
-            // println( x.plan.csp.stn.timepoints.asScala.toString)
-            val dispatchNet = DispatchableNetwork.getDispatchableNetwork(
-              x.plan.csp.stn,
-              x.plan.csp.stn.timepoints.asScala.toSet.asJava
-            )
-            for (tp <- executed.keys) {
-              if (!dispatchNet.isExecuted(tp)) {
-                try {
-                  dispatchNet.setExecuted(tp, executed(tp))
-                } catch {
-                  case e: Exception =>
-                    context.log.error(
-                      s"[$t] Error while setting executed timepoint $tp to ${executed(tp)}"
-                    )
-                    context.log.debug(s"[$t] Executed: ${executed.mkString(", ")}")
-                    throw e
+            
+            if (executed.contains(x.plan.pb.end)) {
+              context.log.info(s"[$t] Plan executed successfully, going idle")
+              context.log.info(s"[$t] Final timeline: ")
+              val actions = Printer.actionsInPlan(x.plan).split("\n")
+              actions.foreach(context.log.info(_))
+              idle(x)
+            } else {
+              // println( x.plan.csp.stn.timepoints.asScala.toString)
+              
+              for (tp <- executed.keys) {
+                if (!x.network.isExecuted(tp)) {
+                  try {
+                    x.network.setExecuted(tp, executed(tp))
+                  } catch {
+                    case e: Exception =>
+                      context.log.error(
+                        s"[$t] Error while setting executed timepoint $tp to ${executed(tp)}"
+                      )
+                      context.log.debug(s"[$t] Executed: ${executed.mkString(", ")}")
+                      throw e
+                  }
                 }
               }
-            }
-            if (dispatchNet.isExecuted(x.plan.pb.end)) {
-              context.log.info(s"[$t] Plan executed successfully, going idle")
-              idle(MNothing)
-            } else {
-              context.log.debug(s"[$t] Executed: ${executed.mkString(", ")}")
-              val executables = dispatchNet.getExecutables(t).asScala
-              context.log.debug(
+            
+              context.log.trace(s"[$t] Executed: ${executed.mkString(", ")}")
+              val executables = x.network.getExecutables(t).asScala
+              context.log.trace(
                 s"[$t] Executables: ${executables.mkString(", ")}"
               )
               for (tp <- executables) {
@@ -188,6 +203,7 @@ class ActivityManager(
                   context.log.info(
                     s"[$t] Starting action: ${Printer.action(x.plan, x.actionStarts(tp))}"
                   )
+                  executedActions += x.actionStarts(tp)
                   executed += ((tp, t))
                   dispatcher ! ExecutionRequest(
                     x.actionStarts(tp),
@@ -204,47 +220,71 @@ class ActivityManager(
                     )
                   }
                 } else if (!x.actionEnds.contains(tp) && !executed.contains(tp)) {
-                  dispatchNet.setExecuted(tp, t)
+                  // dispatchNet.setExecuted(tp, t)
+                  context.log.debug(s"[$t] Timpoint $tp marked as executed")
                   executed += ((tp, t))
+                } else {
+                  context.log.debug(s"[$t] Timepoint $tp is not dispatchable by the manager")
                 }
               }
               dispatching(x)
             }
 
-          case (DispatchSuccess(a), x: FullPlan) =>
-            val t = Clock.time()
+          case (DispatchSuccess(a, t), x: FullPlan) =>
             context.log.info(s"[$t] Action ${Printer.action(x.plan, a)} executed successfully")
-            val earliestStart = x.plan.getEarliestStartTime(a.end)
-            if (t < earliestStart) {
-              executed += ((a.end, earliestStart))
-            } else {
+            if (!executed.contains(a.end)) {
               executed += ((a.end, t))
             }
-
             dispatching(x)
+          
+          case (AddGoal(goal), x: FullPlan) =>
+            integrateNewGoal(goal, context, x.plan)
+            waitingForPlan(x)
         }
       }
   }
-  //  whenUnhandled {
-  //    case Event(TimepointExecuted(tp, time), _) =>
-  //      executed += ((tp, time))
-  //      stay()
-  //  }
 
   private def getInitialPartialPlan = {
     val pplan =
       new PPlan(Utils.getProblem, Controllability.PSEUDO_CONTROLLABILITY)
     for (g <- goals)
       pplan.apply(g, false)
+    // for (a <- executedActions)
+    //   pplan.apply(new ActionInsertion(a), false)
     pplan
   }
 
   private def integrateNewGoal(
       goal: PartialPlanModification,
-      context: ActorContext[ManagerEvent]
+      context: ActorContext[ManagerEvent],
+      currentPlan: PPlan = null
   ): Unit = {
-    goals += goal
-    val pplan = getInitialPartialPlan
+    val pplan = if (currentPlan != null) {
+      context.log.info("Integrating new goal into existing plan")
+      goals += goal
+      executed -= currentPlan.pb.end
+      val newPlan = currentPlan.cc(false)
+      try {
+        val consistent = newPlan.apply(goal, false)
+        if (!consistent) {
+          // FIXME: maybe this could be fixable, but unsure
+          context.log.info("New goal is not consistent with current plan, planning will fail")
+        }
+      } catch {
+        case e: Exception =>
+          context.log.error(s"Error while applying goal $goal with exception $e")
+          println(newPlan.csp.stn.toStringRepresentation)
+          throw e
+      }
+      
+      newPlan
+    } else {
+      context.log.info("Recreating plan from scratch")
+      goals += goal
+      getInitialPartialPlan
+    }
+    // goals += goal
+    // val pplan =  getInitialPartialPlan
     planner ! GetPlan(
       pplan,
       FiniteDuration(10, TimeUnit.SECONDS),

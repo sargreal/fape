@@ -9,87 +9,98 @@ import fr.laas.fape.acting.messages.{
 }
 import fr.laas.fape.anml.model.concrete.{ActionStatus, Action}
 import akka.actor.typed.scaladsl.TimerScheduler
-import fr.laas.fape.acting.messages.TimepointActive
+import fr.laas.fape.acting.messages.{TimepointActive, ClockEvent}
 import scala.concurrent.duration._
 import fr.laas.fape.acting.messages.DispatchSuccess
 import fr.laas.fape.anml.model.concrete.ActRef
 import fr.laas.fape.planning.core.planning.states.Printer
+import fr.laas.fape.planning.core.planning.states.PartialPlan
+import akka.actor.typed.ActorRef
+import fr.laas.fape.acting.messages.TimedReply
+import fr.laas.fape.acting.messages.ReplyAt
 
 object DispatchActor {
   sealed trait MData
-  final case class MExecutingRequests(requests: Map[ActRef, ExecutionRequest]) extends MData
+  final case class MExecutingRequests(requests: Map[ActRef, ExecutionRequest], clock: ActorRef[ClockEvent]) extends MData
 
-  def apply(): Behavior[DispatchEvent] = Behaviors.setup { context =>
-    Behaviors.withTimers(timers => new DispatchActor(timers).executing(MExecutingRequests(Map())))
+  
+  def apply(clock: ActorRef[ClockEvent]): Behavior[DispatchEvent] = Behaviors.setup { context =>
+    executing(MExecutingRequests(Map(), clock))
   }
-
-}
-
-import fr.laas.fape.acting.DispatchActor._
-
-class DispatchActor(timers: TimerScheduler[DispatchEvent]) {
-
-  def t = Clock.time
-
-  // def idle(): Behavior[DispatchEvent] = Behaviors.setup { context =>
-  //   Behaviors.receiveMessage[DispatchEvent] {
-  //     case req: ExecutionRequest(action, plan, replyTo) =>
-  //       context.log.info(s"[$t] Executing action ${action.name}")
-  //       action.setStatus(ActionStatus.EXECUTING)
-  //       timers.startSingleTimer(
-  //         action.name,
-  //         ActiveTimepointNotification(action.name, TimepointActive(action.end)),
-  //         Clock.toMilliDur(
-  //           plan.getEarliestStartTime(action.end)
-  //         ) - Clock.timeMilliDur
-  //       )
-  //       executing(MExecutingRequests(Map(action.name -> req)))
-  //     case ActiveTimepointNotification(actionName, timepointActive) =>
-  //       context.log.info(s"[$t] Have not executed aything yet")
-  //       Behaviors.same
-  //   }
-  // }
 
   def executing(data: MExecutingRequests): Behavior[DispatchEvent] =
     Behaviors.setup { context =>
       Behaviors.receiveMessage[DispatchEvent] {
         case req: ExecutionRequest =>
-          context.log.info(s"[$t] Executing action ${Printer.action(req.plan,req.action)}")
-          req.action.setStatus(ActionStatus.EXECUTING)
-          timers.startSingleTimer(
-            req.action.id,
-            ActiveTimepointNotification(
-              req.action.id,
-              TimepointActive(req.action.end)
-            ),
-            Clock.toMilliDur(
-              req.plan.getEarliestStartTime(req.action.end)
-            ) - Clock.timeMilliDur
-          )
-          executing(MExecutingRequests(data.requests + (req.action.id -> req)))
+          context.log.debug(s"Executing action ${Printer.action(req.plan,req.action)}")
+          setExecuting(req.action)
+          val endTime = req.plan.getEarliestStartTime(req.action.end)
+          context.log.debug(s"Expected finish at t=$endTime")
+          data.clock ! ReplyAt(endTime, req.action.id.toInt, context.self)
+          executing(MExecutingRequests(data.requests + (req.action.id -> req), data.clock))
+        case TimedReply(timepoint, reference) =>
+          data.requests.get(new ActRef(reference)) match {
+            case Some(req) =>
+              context.log.debug(
+                s"[$timepoint] Action ${Printer.action(req.plan,req.action)} executed"
+              )
+              setExecuted(req.action, req.plan)
+              req.actorRef ! DispatchSuccess(req.action, timepoint)
+              executing(MExecutingRequests(data.requests - req.action.id, data.clock))
+            case None =>
+              context.log.warn(
+                s"[$timepoint] Action $reference is not in the list of executing actions"
+              )
+              Behaviors.same
+          }
         case ActiveTimepointNotification(action, timepointActive) =>
           data.requests.get(action) match {
             case Some(req) =>
+              val t = req.plan.getEarliestStartTime(timepointActive.tp)
               timepointActive.tp.id match {
                 case req.action.end.id =>
-                  req.action.setStatus(ActionStatus.EXECUTED)
-                  context.log.info(
+                  setExecuted(req.action, req.plan)
+                  context.log.debug(
                     s"[$t] Action ${Printer.action(req.plan,req.action)} executed"
                   )
-                  req.actorRef ! DispatchSuccess(req.action)
-                  executing(MExecutingRequests(data.requests - action))
+                  req.actorRef ! DispatchSuccess(req.action, t)
+                  executing(MExecutingRequests(data.requests - action, data.clock))
                 case _ =>
-                  context.log.info(
+                  context.log.warn(
                     s"[$t] Action ${Printer.action(req.plan,req.action)} found, but timpoint ${timepointActive.tp} is not the end"
                   )
                   Behaviors.same
               }
             case None =>
-              context.log.info(
-                s"[$t] Action $action is not in the list of executing actions"
+              context.log.warn(
+                s"Action $action is not in the list of executing actions"
               )
               Behaviors.same
           }
+      }
+    }
+
+    def setExecuting(act: Action) {
+      act.setStatus(ActionStatus.EXECUTING)
+      if (act.hasParent) {
+        setExecuting(act.parent)
+      }
+    }
+
+    /**
+      * Sets the status of the action and all its parents to EXECUTED if all siblings have been executed as well.
+      *
+      * @param act
+      * @param plan
+      */
+    def setExecuted(act: Action, plan: PartialPlan) {
+      plan.getAllActions().stream.filter(_.hasParent).filter(_.parent == act).filter(_.status != ActionStatus.EXECUTED).count() match {
+        case 0 =>
+          act.setStatus(ActionStatus.EXECUTED)
+          if (act.hasParent) {
+            setExecuted(act.parent, plan)
+          }
+        case _ =>
       }
     }
 }

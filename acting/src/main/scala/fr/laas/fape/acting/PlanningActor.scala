@@ -11,11 +11,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
+
 object PlanningActor {
   private def time = System.currentTimeMillis()
 
   val repairTime = 10000
-
 
   def apply(): Behavior[PlannerEvent] =
     idle()
@@ -23,8 +23,7 @@ object PlanningActor {
   def idle(): Behavior[PlannerEvent] = Behaviors.setup { context =>
     Behaviors.receiveMessage[PlannerEvent] {
       case GetPlan(initPlan, duration, reqID, replyTo) =>
-        val options = new PlanningOptions()
-        val planner = new Planner(initPlan, options)
+        val planner = new Planner(initPlan, Utils.getPlanningOptions)
         launchPlanningProcess(planner, duration, reqID, replyTo, context)
         planning(Some(planner))
     }
@@ -35,7 +34,7 @@ object PlanningActor {
       (message, prevPlanner) match {
         case (GetPlan(initPlan, duration, reqID, replyTo), Some(previousPlanner)) =>
           previousPlanner.stopPlanning = true
-          val planner = new Planner(initPlan, new PlanningOptions())
+          val planner = new Planner(initPlan, Utils.getPlanningOptions)
           launchPlanningProcess(planner, duration, reqID, replyTo, context)
           planning(Some(planner))
       }
@@ -48,7 +47,6 @@ object PlanningActor {
         val solution = planner.search(time + duration.toMillis)
         if (solution != null) {
           replyTo ! PlanFound(solution, reqID)
-          context.log.info("Got Plan")
         } else if (planner.planState == EPlanState.TIMEOUT) {
           replyTo ! PlanningTimedOut(reqID)
         } else {
@@ -56,7 +54,12 @@ object PlanningActor {
         }
       } catch {
         case x: PlanningInterruptedException =>
-          context.log.info(s"Planning interrupted ($reqID)")
+          println(s"Planning interrupted ($reqID)")
+          replyTo ! PlanningTimedOut(reqID)
+        case x: Throwable =>
+          println(s"Error while planning ($reqID)")
+          x.printStackTrace()
+          replyTo ! NoPlanExists(reqID)
       }
     }
   }
