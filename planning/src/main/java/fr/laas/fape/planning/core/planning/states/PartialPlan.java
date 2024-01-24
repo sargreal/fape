@@ -162,9 +162,19 @@ public class PartialPlan implements Reporter {
      * @param st State to copy
      */
     public PartialPlan(PartialPlan st, int id) {
+        this(st, id, true);
+    }
+
+    /**
+     * Produces a new State with the same content as state in parameter.
+     *
+     * @param st State to copy
+     */
+    public PartialPlan(PartialPlan st, int id, boolean keepPlanner) {
         this.mID = id;
         this.depth = st.depth +1;
         pb = st.pb;
+        if (keepPlanner)
         pl = st.pl;
         this.controllability = st.controllability;
         this.modifications = new ArrayList<>(st.modifications);
@@ -195,9 +205,17 @@ public class PartialPlan implements Reporter {
 
     public void setDeadEnd() { isDeadEnd = true; }
 
+    public PartialPlan cc(boolean keepPlanner) {
+        return cc(PartialPlan.idCounter++, keepPlanner);
+    }
+
     public PartialPlan cc(int newID) {
+        return cc(newID, true);
+    }
+
+    public PartialPlan cc(int newID, boolean keepPlanner) {
         Counters.inc("plan-copy");
-        return new PartialPlan(this, newID);
+        return new PartialPlan(this, newID, keepPlanner);
     }
 
     private List<Handler> getHandlers() {
@@ -563,16 +581,16 @@ public class PartialPlan implements Reporter {
      */
     private void apply(Chronicle mod, TemporalConstraint tc) {
         try {
-        if(tc instanceof MinDelayConstraint) {
-            csp.addMinDelay(tc.src(), tc.dst(), translateToCSPVariable(((MinDelayConstraint) tc).minDelay()));
-        } else if(tc instanceof ContingentConstraint) {
-            ContingentConstraint cc = (ContingentConstraint) tc;
-            csp.addContingentConstraint(
-                    cc.src(), cc.dst(),
-                    translateToCSPVariable(cc.min()),
-                    translateToCSPVariable(cc.max()));
-        } else {
-            throw new UnsupportedOperationException("Temporal contrainst: "+tc+" is not supported yet.");
+            if(tc instanceof MinDelayConstraint) {
+                csp.addMinDelay(tc.src(), tc.dst(), translateToCSPVariable(((MinDelayConstraint) tc).minDelay()));
+            } else if(tc instanceof ContingentConstraint) {
+                ContingentConstraint cc = (ContingentConstraint) tc;
+                csp.addContingentConstraint(
+                        cc.src(), cc.dst(),
+                        translateToCSPVariable(cc.min()),
+                        translateToCSPVariable(cc.max()));
+            } else {
+                throw new UnsupportedOperationException("Temporal contrainst: "+tc+" is not supported yet.");
             }
         } catch (InconsistentTemporalNetwork e) {
             throw new FAPEException("Inconsistent temporal network when applying constraint "+tc, e);
