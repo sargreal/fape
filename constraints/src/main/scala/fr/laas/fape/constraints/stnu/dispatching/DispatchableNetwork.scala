@@ -10,6 +10,14 @@ import fr.laas.fape.constraints.stnu.morris.{DCMorris, TemporalNetwork}
 import fr.laas.fape.constraints.stnu.structurals.{DistanceMatrix, StnWithStructurals}
 import fr.laas.fape.structures.{ISet, IList}
 
+/**
+  * The WaitConstraint class represents a constraint that forces the destination timepoint to be at least dist time units after the source timepoint.
+  *
+  * @param src
+  * @param dst
+  * @param dist
+  * @param label
+  */
 class WaitConstraint(val src: TPRef, val dst: TPRef, val dist: Int, val label: TPRef) extends TemporalConstraint {
   override def usedVariables: Set[Variable] = Set(src, dst, label)
 }
@@ -65,8 +73,14 @@ class DispatchableNetwork(val stn: StnWithStructurals) {
     stn.forceExecutionTime(tp, time)
   }
 
+  private var currentTime = -1
+  def getCurrentTime = currentTime
+
   /** Pushes back all non-executed timepoints to be after the given time */
   def setCurrentTime(time: Int): Unit = {
+    if(time <= currentTime)
+      return
+    currentTime = time
     val start = stn.start.get
     for(tp <- stn.timepoints.asScala if !executions.contains(tp)) {
       if(tp.genre.isDispatchable) {
@@ -90,13 +104,23 @@ class DispatchableNetwork(val stn: StnWithStructurals) {
   def getExecutables(currentTime: Int): ISet[TPRef] = {
     setCurrentTime(currentTime)
     // executables are all dispatchable that can be executed at the current time
+    // println(stn.timepoints.asScala.toString)
     val executables = stn.timepoints.asScala
       .filter(_.genre.isDispatchable)
+      // .filter(!isExecuted(_))
       .filter(stn.getEarliestTime(_) == currentTime)
+    
+    // println("recorded timepoints:"+ stn.timepointByIndex.toList.mkString(","))
+    // println("dispatchables with earliestTime:"+ stn.timepoints.asScala.filter(_.genre.isDispatchable).map(tp => (tp,stn.getEarliestTime(tp))).mkString(","))
+    // println("executables:"+ executables.mkString(","))
 
     // timepoints that are not executed yet
     val unexecutedPredecessors =
-      (executables ++ stn.contingentLinks.map(c => c.dst)).filterNot(isExecuted(_))
+      (executables ++ stn.contingentLinks.map(c => c.dst))
+        .filterNot(isExecuted(_))
+
+    // println("contingents:"+ stn.contingentLinks.map(c => c.dst).toList.mkString(","))
+    // println("unexecuted predecessors:"+ unexecutedPredecessors.mkString(","))
 
     // restrict executables to timepoints with not predecessor that is not executed yet
     val executablesWithNoExecutablePredecessors =

@@ -50,4 +50,9 @@ public class SupportRestriction implements PartialPlanModification {
         else
             return Arrays.asList(assertion, task);
     }
+
+    @Override
+    public String toString() {
+        return "SupportRestriction(assertion=" + assertion + "," + (task != null ? "task=" + task : "action=" + action)  + ")";
+    }
 }

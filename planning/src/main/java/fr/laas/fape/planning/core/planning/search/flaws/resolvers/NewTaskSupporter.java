@@ -30,7 +30,7 @@ public class NewTaskSupporter implements Resolver {
 
     @Override
     public PartialPlanModification asStateModification(PartialPlan partialPlan) {
-        Action action = Factory.getStandaloneAction(partialPlan.pb, abs, partialPlan.refCounter);
+        Action action = Factory.getSupportingAction(partialPlan.pb, abs, unrefined, partialPlan.refCounter);
         return new SequenceOfPartialPlanModifications(Arrays.asList(
                 new ActionInsertion(action),
                 new TaskRefinement(unrefined, action)));

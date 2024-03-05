@@ -20,6 +20,17 @@ public class Factory {
         return Action$.MODULE$.getNewStandaloneAction(pb, abs, refCounter);
     }
 
+    
+    /**
+     * Returns a new action as part of a problem.
+     * @param pb Problem in which the action appears
+     * @param abs Abstract version of the action.
+     * @return A fully instantiated Action
+     */
+    public static Action getSupportingAction(AnmlProblem pb, AbstractAction abs, Task supportedAction, RefCounter refCounter) {
+        return Action$.MODULE$.getNewSupportingAction(pb, abs, supportedAction, refCounter);
+    }
+
     /**
      * Creates a new action with some predefined arguments and an identifier.
      * Do not define an identifier yourself unless you know what you're doing.

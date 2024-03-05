@@ -23,4 +23,9 @@ public class ActionInsertion implements PartialPlanModification {
         objs.add(action);
         return objs;
     }
+
+    @Override
+    public String toString() {
+        return "ActionInsertion(" + action + ")";
+    }
 }

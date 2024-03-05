@@ -25,7 +25,13 @@ import scala.collection.JavaConverters._
   */
 class Chronicle extends VariableUser {
 
+  /**
+    * The container in which this chronicle is located.
+    */
   var container : Option[ChronicleContainer] = None
+
+  var origin: String = ""
+  def setOrigin(o: String) = origin = o
 
   def getLabel = container match {
     case Some(c) => c.label
@@ -126,5 +132,20 @@ class Chronicle extends VariableUser {
       ++ statements.asScala.map(_.asInstanceOf[VariableUser])
       ).flatMap(_.usedVariables)
       .toSet ++ vars.asScala
+
+  override def toString: String = {
+    val sb = new StringBuilder()
+    sb.append("Chronicle(")
+    sb.append("origin: " + origin + ", ")
+    sb.append("container: " + getLabel + ", ")
+    sb.append("vars: " + vars + ", ")
+    sb.append("statements: " + statements + ", ")
+    sb.append("actions: " + tasks + ", ")
+    sb.append("bindingConstraints: " + bindingConstraints + ", ")
+    sb.append("temporalConstraints: " + temporalConstraints + ", ")
+    sb.append("instances: " + instances + ", ")
+    sb.append("annotations: " + annotations + ")")
+    sb.toString()
+  }
 }
 

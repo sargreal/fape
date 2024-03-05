@@ -87,10 +87,32 @@ class Clock(timers: TimerScheduler[ClockEvent]) {
         ticking(data.removeListener(listener))
       case r: ReplyAt =>
         ticking(data.addTimpointListener(r))
+      case StopClock =>
+        stopped(data)
+      case ResumeClock => 
+        Behaviors.same
       // case GetTime(actorRef) =>
       //   actorRef ! Time(data.currentTime)
       //   Behaviors.same
     }
+  }
+
+  def stopped(data: ClockData): Behavior[ClockEvent] = Behaviors.receiveMessage[ClockEvent] {
+    case StopClock =>
+      Behaviors.same
+    case InternalTick =>
+      Behaviors.same
+    case RegisterTickListener(listener) =>
+      stopped(data.addListener(listener))
+    case UnregisterTickListener(listener) =>
+      stopped(data.removeListener(listener))
+    case r: ReplyAt =>
+      stopped(data.addTimpointListener(r))
+    case ResumeClock => 
+      ticking(data)
+    // case GetTime(actorRef) =>
+    //   actorRef ! Time(data.currentTime)
+    //   Behaviors.same
   }
   
 }

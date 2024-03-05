@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class TaskNetworkManager implements Reporter {
 
@@ -86,8 +87,8 @@ public class TaskNetworkManager implements Reporter {
      * @return True if the action is a root of the task network (e.g. it is not part
      *         of any decomposition.
      */
-    public boolean isRoot(Action a) {
-        return network.inDegree(new TNNode(a)) == 0;
+    public boolean isRoot(TNNode n) {
+        return network.inDegree(n) == 0;
     }
 
     /**
@@ -95,24 +96,25 @@ public class TaskNetworkManager implements Reporter {
      * @return All actions of the task network that are not issued from a decomposition
      *         (ie. roots of the task network).
      */
-    public List<Action> roots() {
-        List<Action> roots = new LinkedList<>();
+    public List<TNNode> roots() {
+        List<TNNode> roots = new LinkedList<>();
         for(TNNode n : network.jVertices()) {
-            if(n.isAction() && isRoot(n.asAction())) {
-                roots.add(n.asAction());
+            if(isRoot(n)) {
+                roots.add(n);
             }
         }
-        assert roots.size() == numRoots : "Error: wrong number of roots.";
+        assert roots.size() == numRoots : "Error: wrong number of roots. Collected " + roots.size() + " but expected " + numRoots + ".\n" +
+                "Roots: " + roots.toString();
         return roots;
     }
 
     /**
-     * @param ac ActionCondition to lookup
+     * @param task Task to lookup
      * @return True if the action condition is supported (i.e. there is an edge
-     *         from ac to an action.
+     *         from task to an action.
      */
-    public boolean isSupported(Task ac) {
-        for(TNNode child : network.jChildren(new TNNode(ac))) {
+    public boolean isSupported(Task task) {
+        for(TNNode child : network.jChildren(new TNNode(task))) {
             if(child.isAction()) {
                 return true;
             }
@@ -156,9 +158,9 @@ public class TaskNetworkManager implements Reporter {
             List<Task> l = new ArrayList<>();
             for (TNNode n : network.jVertices()) {
                 if (n.isTask()) {
-                    Task ac = n.asTask();
-                    if (!isSupported(ac)) {
-                        l.add(ac);
+                    Task task = n.asTask();
+                    if (!isSupported(task)) {
+                        l.add(task);
                     }
                 }
             }
@@ -172,8 +174,8 @@ public class TaskNetworkManager implements Reporter {
         List<Task> l = new LinkedList<>();
         for (TNNode n : network.jVertices()) {
             if(n.isTask()) {
-                Task ac = n.asTask();
-                l.add(ac);
+                Task task = n.asTask();
+                l.add(task);
             }
         }
         return l;
@@ -199,7 +201,7 @@ public class TaskNetworkManager implements Reporter {
     }
 
     /**
-     * @return True if this action supports a task
+     * @return  True if this action supports a task
      */
     public boolean isSupporting(Action a) {
         TNNode n = new TNNode(a);
@@ -207,20 +209,22 @@ public class TaskNetworkManager implements Reporter {
     }
 
     /**
-     * add a task support link from an action condition to an action.
-     * THis link means: the action condition cond is supported by the action a.
+     * add a task support link from a task to an action.
+     * THis link means: the task t is supported by the action a.
      *
-     * An action condition should be supported by exactly one action.
-     * @param cond An action condition already present in the task network.
+     * An task should be supported by exactly one action.
+     * @param t A task already present in the task network.
      * @param a An action already present in the task network.
      */
-    public void addSupport(Task cond, Action a) {
-        assert network.contains(new TNNode(cond));
+    public void addSupport(Task t, Action a) {
+        assert network.contains(new TNNode(t));
         assert network.contains(new TNNode(a));
-        assert network.outDegree(new TNNode(cond)) == 0;
-        network.addEdge(new TNNode(cond), new TNNode(a));
+        assert network.outDegree(new TNNode(t)) == 0;
+        network.addEdge(new TNNode(t), new TNNode(a));
         if(network.inDegree(new TNNode(a)) == 1) {
-            numRoots--;
+            if (!a.hasParent()) {
+                numRoots--;
+            }
             if(a.mustBeMotivated())
                 numUnmotivatedActions--;
         }
@@ -238,7 +242,7 @@ public class TaskNetworkManager implements Reporter {
         actions.add(a);
 
         if(a.hasParent()) {
-            network.addEdge(new TNNode(a.parent()), new TNNode(a));
+            // network.addEdge(new TNNode(a.parent()), new TNNode(a));
         } else {
             numRoots++;
         }
@@ -249,29 +253,37 @@ public class TaskNetworkManager implements Reporter {
 
     /**
      * Adds an action condition to an action.
-     * @param ac The action condition.
-     * @param parent The action in which ac appears. This action must be already
+     * @param task The action condition.
+     * @param parent The action in which task appears. This action must be already
      *               present in the task network.
      */
-    public void insert(Task ac, Action parent) {
-        network.addVertex(new TNNode(ac));
-        network.addEdge(new TNNode(parent), new TNNode(ac));
+    public void insert(Task task, Action parent) {
+        network.addVertex(new TNNode(task));
+        network.addEdge(new TNNode(parent), new TNNode(task));
+        task.setParent(parent);
         numOpenTasks++;
         clearCache();
     }
 
     public void setSubtaskOf(Task t, Action parent) {
         network.addEdge(new TNNode(parent), new TNNode(t));
+        if (!t.hasParent()) {
+            numRoots--;
+        }
+        t.setParent(parent);
         clearCache();
     }
 
     /**
-     * Adds an action condition in the task network.
-     * @param ac The action condition.
+     * Adds task in the task network.
+     * @param task The task to add.
      */
-    public void insert(Task ac) {
-        network.addVertex(new TNNode(ac));
+    public void insert(Task task) {
+        network.addVertex(new TNNode(task));
         numOpenTasks++;
+        if (!task.hasParent()) {
+            numRoots++;
+        }
         clearCache();
     }
 
@@ -310,7 +322,7 @@ public class TaskNetworkManager implements Reporter {
         if(network.inDegree(n1) == 0) {
             return false;
         } else if(network.parents(n1).size() != 1) {
-            throw new FAPEException("Error: node "+n1+" has more than one father.");
+            throw new FAPEException("Error: node "+n1+" has more than one father: " + network.parents(n1).toString());
         } else if(network.parents(n1).contains(n2)) {
             return true;
         } else {
@@ -356,6 +368,14 @@ public class TaskNetworkManager implements Reporter {
             return new Pair<>(commonAncestor, depth);
         else
             return null;
+    }
+
+    public List<Action> children(Task t) {
+        return network.jChildren(new TNNode(t)).stream().map(TNNode::asAction).collect(Collectors.toList());
+    }
+
+    public List<Task> children(Action a) {
+        return network.jChildren(new TNNode(a)).stream().map(TNNode::asTask).collect(Collectors.toList());
     }
 
     /**
@@ -440,5 +460,13 @@ public class TaskNetworkManager implements Reporter {
             }
         }
         g.exportToDotFile(filename, new TNPrinter());
+    }
+
+    public boolean contains(Action a) {
+        return network.contains(new TNNode(a));
+    }
+
+    public boolean contains(Task t) {
+        return network.contains(new TNNode(t));
     }
 }

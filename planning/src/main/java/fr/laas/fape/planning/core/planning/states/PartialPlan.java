@@ -20,6 +20,7 @@ import fr.laas.fape.planning.core.planning.search.flaws.resolvers.Resolver;
 import fr.laas.fape.planning.core.planning.states.modification.ChronicleInsertion;
 import fr.laas.fape.planning.core.planning.states.modification.PartialPlanModification;
 import fr.laas.fape.planning.core.planning.tasknetworks.TaskNetworkManager;
+import fr.laas.fape.planning.core.planning.tasknetworks.TNNode;
 import fr.laas.fape.planning.core.planning.timelines.ChainComponent;
 import fr.laas.fape.planning.core.planning.timelines.Timeline;
 import fr.laas.fape.planning.core.planning.timelines.TimelinesManager;
@@ -27,6 +28,7 @@ import fr.laas.fape.planning.exceptions.FAPEException;
 import fr.laas.fape.planning.util.EffSet;
 import fr.laas.fape.planning.util.Pair;
 import fr.laas.fape.planning.util.Reporter;
+import fr.laas.fape.planning.util.TinyLogger;
 import fr.laas.fape.structures.IRSet;
 import lombok.Getter;
 import lombok.Setter;
@@ -217,6 +219,102 @@ public class PartialPlan implements Reporter {
         Counters.inc("plan-copy");
         return new PartialPlan(this, newID, keepPlanner);
     }
+
+    // public PartialPlan plainClone() {
+    //     PartialPlan newPlan = new PartialPlan(this.pb, this.controllability);
+    //     // Rebuild the plan from scratch using only the actions and tasks
+        
+    //     // First value is the action/task to insert, second value is the parentin the new plan
+    //     ArrayDeque<Pair<Action,Task>> actions = new ArrayDeque<>();
+    //     ArrayDeque<Pair<Task,Action>> tasks = new ArrayDeque<>();
+
+    //     for (TNNode n : this.taskNet.roots()) {
+    //         if (n.isAction()) {
+    //             actions.add(new Pair<>(n.asAction(), null));
+    //         } else {
+    //             tasks.add(new Pair<>(n.asTask(), null));
+    //         }
+    //     }
+
+    //     // Add the tasks and actions following the hierarchy
+    //     while(!actions.isEmpty() || !tasks.isEmpty()) {
+    //         if(!actions.isEmpty()) {
+                
+    //             Pair<Action, Task> pairToInsert = actions.poll();
+    //             Action original = pairToInsert.value1;
+    //             Task parent = pairToInsert.value2;
+    //             Action newAction;
+    //             if (parent == null) {
+    //                 newAction = Factory.getStandaloneAction(pb, original.abs(), refCounter);
+    //             } else {
+    //                 newAction = Factory.getSupportingAction(pb, original.abs(), parent, refCounter);
+    //             }
+    //             // If the action is not pending, all bindings and timepoints have to be fixed
+    //             switch (original.status()) {
+    //                 case EXECUTED:
+    //                     newPlan.csp.stn().setTime(newAction.start(), getEarliestStartTime(original.start()));
+    //                 case EXECUTING:
+    //                     newPlan.csp.stn().setTime(newAction.end(), getEarliestStartTime(original.end()));
+    //                     // Restrict the domain of the variables to the values they have in the original plan
+    //                     // Complicated here is that the variables are not the same, so we have to find the corresponding variable
+    //                     // using the instance names
+    //                     for (VarRef var : newAction.vars()) {
+    //                         if (var instanceof InstanceRef) {
+    //                             String instanceName = ((InstanceRef) var).instance();
+    //                             VarRef originalVar = original.vars().stream()
+    //                                     .filter(v -> v instanceof InstanceRef)
+    //                                     .filter(v -> ((InstanceRef) v).instance().equals(instanceName))
+    //                                     .findFirst().orElse(null);
+    //                             if (originalVar != null) {
+    //                                 Domain originalDomain = original.chronicle().bindings().domainOf(originalVar);
+    //                                 newPlan.csp.bindings().restrictDomain(var, originalDomain);
+    //                             }
+    //                         }
+    //                     }
+    //                     // for (BindingConstraint bc : original.bindingConstraints()) {
+    //                     //     BindingConstraint newBc;
+    //                     //     TinyLogger.LogInfo(bc.toString());
+    //                     //     if (bc instanceof AssignmentConstraint) {
+    //                     //         newBc = new AssignmentConstraint(((AssignmentConstraint) bc).sv(), ((AssignmentConstraint) bc).variable());
+    //                     //     } else if (bc instanceof VarEqualityConstraint) {
+    //                     //         newBc = new VarEqualityConstraint(((VarEqualityConstraint) bc).leftVar(), ((VarEqualityConstraint) bc).rightVar());
+    //                     //     } else if (bc instanceof VarInequalityConstraint) {
+    //                     //         newBc = new VarInequalityConstraint(((VarInequalityConstraint) bc).leftVar(), ((VarInequalityConstraint) bc).rightVar());
+    //                     //     } else if (bc instanceof EqualityConstraint) {
+    //                     //         newBc = new EqualityConstraint(((EqualityConstraint) bc).sv(), ((EqualityConstraint) bc).variable());
+    //                     //     } else if (bc instanceof InequalityConstraint) {
+    //                     //         newBc = new InequalityConstraint(((InequalityConstraint) bc).sv(), ((InequalityConstraint) bc).variable());
+    //                     //     } else if (bc instanceof IntegerAssignmentConstraint) {
+    //                     //         newBc = new IntegerAssignmentConstraint(((IntegerAssignmentConstraint) bc).sv(), ((IntegerAssignmentConstraint) bc).value());
+    //                     //     } else {
+    //                     //         throw new FAPEException("Unhandled binding constraint type: " + bc);
+    //                     //     }
+    //                     //     if (newBc != null) {
+    //                     //         newAction.chronicle().addConstraint(newBc);
+    //                     //     }
+    //                     // }
+    //                     break;
+                    
+    //             }
+    //             newPlan.insert(newAction);
+    //             for(Task c : this.taskNet.children(original))
+    //                 tasks.add(new Pair<>(c, newAction));
+    //         } else if (!tasks.isEmpty()) {
+    //             Pair<Task,Action> pairToInsert = tasks.poll();
+    //             Task newTask = new Task(pairToInsert.value1.name(), pairToInsert.value1.args(), newPlan.pb.context(), refCounter);
+    //             if (pairToInsert.value2 == null) {
+    //                 newPlan.taskNet.insert(newTask);
+    //             } else {
+    //                 newPlan.taskNet.insert(newTask, pairToInsert.value2);
+    //             }
+    //             for(Action c : this.taskNet.children(pairToInsert.value1))
+    //                 actions.add(new Pair<>(c, newTask));
+    //         }
+    //     }
+    //     TinyLogger.LogInfo("New Plan:");
+    //     TinyLogger.LogInfo(newPlan);
+    //     return newPlan;
+    // }
 
     private List<Handler> getHandlers() {
         return pl != null ? pl.getHandlers() : Collections.emptyList();
@@ -515,7 +613,7 @@ public class PartialPlan implements Reporter {
             csp.bindings().addSeparationConstraint(c.leftVar(), c.rightVar());
         } else if (bc instanceof EqualityConstraint) {
             EqualityConstraint c = (EqualityConstraint) bc;
-            assert csp.bindings().isRecorded(c.variable());
+            assert csp.bindings().isRecorded(c.variable()) : "Variable "+c.variable()+" is not recorded in the CSP.";
             List<VarRef> variables = new LinkedList<>(Arrays.asList(c.sv().args()));
             variables.add(c.variable());
             csp.bindings().addNAryConstraint(variables, c.sv().func().name());
@@ -593,7 +691,7 @@ public class PartialPlan implements Reporter {
                 throw new UnsupportedOperationException("Temporal contrainst: "+tc+" is not supported yet.");
             }
         } catch (InconsistentTemporalNetwork e) {
-            throw new FAPEException("Inconsistent temporal network when applying constraint "+tc, e);
+            throw new InconsistentTemporalNetwork("Inconsistent temporal network when applying constraint "+tc + " for " + mod, e);
         }
     }
 
@@ -692,7 +790,7 @@ public class PartialPlan implements Reporter {
      * Flaws are identified using the provided finders and sorted with the provided comparator.
      * An empty result indicates that the plan has no flaw.
      */
-    public Optional<Flaw> getFlaws(List<FlawFinder> finders, Comparator<Flaw> comparator) {
+    public Optional<Flaw> getBestFlaw(List<FlawFinder> finders, Comparator<Flaw> comparator) {
         List<Flaw> flaws = new ArrayList<>();
 
         for (FlawFinder fd : finders)

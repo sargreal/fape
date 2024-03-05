@@ -98,8 +98,8 @@ public class Printer {
 
         String ret = act.name()+"(";
         ret += String.join(", ", act.args().stream().map(v -> variable(plan, v)).collect(Collectors.toList()));
-
-        ret += ") (id:"+act.id()+")";
+        String parent = act.hasParent() ? ",parent:"+act.parent().id() : "";
+        ret += ") (id:"+act.id()+parent+")";
         return ret;
     }
 
@@ -138,26 +138,27 @@ public class Printer {
             int start = plan.getEarliestStartTime(a.start());
             int earliestEnd = plan.getEarliestStartTime(a.end());
             String name = Printer.action(plan, a);
+            String timepoints = "["+a.start()+"@"+start+","+a.end()+"@"+earliestEnd+"]";
             switch (a.status()) {
                 case EXECUTED:
-                    table.add(Arrays.asList(start+":", name, "started: "+start, "ended: "+earliestEnd+" [EXECUTED]"));
+                    table.add(Arrays.asList(start+":", name, "started: "+start, "ended: "+earliestEnd, "[EXECUTED]", timepoints));
                     break;
                 case EXECUTING:
                     if(plan.getDurationBounds(a).nonEmpty()) {
                         int min = plan.getDurationBounds(a).get()._1();
                         int max = plan.getDurationBounds(a).get()._2();
-                        table.add(Arrays.asList(start+":", name, "started: "+start, "duration in ["+min+","+max+"] [EXECUTING]"));
+                        table.add(Arrays.asList(start+":", name, "started: "+start, "duration in ["+min+","+max+"]", "[EXECUTING]", timepoints));
                     } else {
-                        table.add(Arrays.asList(start+":", name, "started: "+start, "min-duration: "+(earliestEnd-start)+" [EXECUTING]"));
+                        table.add(Arrays.asList(start+":", name, "started: "+start, "min-duration: "+(earliestEnd-start), "[EXECUTING]", timepoints));
                     }
                     break;
                 case PENDING:
                     if(plan.getDurationBounds(a).nonEmpty()) {
                         int min = plan.getDurationBounds(a).get()._1();
                         int max = plan.getDurationBounds(a).get()._2();
-                        table.add(Arrays.asList(start+":", name, "earliest-start: "+start, "duration in ["+min+","+max+"]"));
+                        table.add(Arrays.asList(start+":", name, "earliest-start: "+start, "duration in ["+min+","+max+"]", "[PENDING]", timepoints));
                     } else {
-                        table.add(Arrays.asList(start+":", name, "earliest-start: "+start, "min-duration: "+(earliestEnd-start)));
+                        table.add(Arrays.asList(start+":", name, "earliest-start: "+start, "min-duration: "+(earliestEnd-start), "[PENDING]", timepoints));
                     }
                     break;
                 case FAILED:

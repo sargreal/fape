@@ -23,6 +23,7 @@ public class BindingSeparation implements Resolver {
     @Override
     public PartialPlanModification asStateModification(PartialPlan partialPlan) {
         Chronicle chronicle = new Chronicle();
+        chronicle.setOrigin("BindingSeparation");
         chronicle.addConstraint(new VarInequalityConstraint(a, b));
         return new ChronicleInsertion(chronicle);
     }

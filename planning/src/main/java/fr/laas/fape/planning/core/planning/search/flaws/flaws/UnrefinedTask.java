@@ -23,7 +23,7 @@ public class UnrefinedTask extends Flaw {
 
     public final Task task;
 
-    public UnrefinedTask(Task ac) { task = ac; }
+    public UnrefinedTask(Task task) { this.task = task; }
 
     @Override
     public List<Resolver> getResolvers(PartialPlan plan, Planner planner) {
@@ -37,6 +37,7 @@ public class UnrefinedTask extends Flaw {
             if(plan.isAddable(abs))
                 resolvers.add(new NewTaskSupporter(task, abs));
 
+        // unification with an existing action is a resolver only if the action can support the task
         for (Action act : plan.getAllActions()) {
             if ((planner.options.actionsSupportMultipleTasks || !plan.taskNet.isSupporting(act))
                     && plan.canSupport(act, task))

@@ -13,9 +13,18 @@ import scala.collection.JavaConverters._
   * It can be fulfilled/supported by an action with the same whose parameters and
   * time points are equal to those of the action condition.
   */
-class Task(val name: String, val args :java.util.List[VarRef], val parent:Option[Action], refCounter: RefCounter) extends TemporalInterval with VariableUser {
-  def this(name: String, args: List[VarRef], parent: Option[Action], refCounter: RefCounter) =
+class Task(val name: String, val args :java.util.List[VarRef], var parent:Option[Action], refCounter: RefCounter) extends TemporalInterval with VariableUser {
+  def this(name: String, args: List[VarRef], parent: Option[Action], refCounter: RefCounter) = {
     this(name, args.asJava, parent, refCounter)
+  }
+
+  if (parent == null) {
+    parent = None
+  }
+
+  def setParent(a:Action) = parent = Some(a)
+
+  def hasParent = parent.isDefined
 
   def getLabel: String = System.identityHashCode(this).toString
 
@@ -35,8 +44,8 @@ object Task {
 
   def apply(pb :AnmlProblem, ref :AbstractTask, context :Context, parentActionOpt :Option[Action], refCounter: RefCounter) : Task = {
     val args = ref.args.map(context.getGlobalVar(_)).asJava
-    val ac = new Task(ref.name, args, parentActionOpt, refCounter)
-    context.addActionCondition(ref.localId, ac)
-    ac
+    val task = new Task(ref.name, args, parentActionOpt, refCounter)
+    context.addTask(ref.localId, task)
+    task
   }
 }

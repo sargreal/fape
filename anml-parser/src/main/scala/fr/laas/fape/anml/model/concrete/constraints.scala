@@ -46,28 +46,42 @@ abstract class BindingConstraint extends Constraint
 
 class AssignmentConstraint(val sv : ParameterizedStateVariable, val variable : VarRef) extends BindingConstraint {
   override def usedVariables: Set[Variable] = sv.usedVariables + variable
+  
+  override def toString = s"$sv <- $variable"
 }
 
 class IntegerAssignmentConstraint(val sv : ParameterizedStateVariable, val value : Int) extends BindingConstraint {
   override def usedVariables: Set[Variable] = sv.usedVariables
+
+  override def toString = s"$sv <- $value"
 }
 
 class VarEqualityConstraint(val leftVar : VarRef, val rightVar : VarRef) extends BindingConstraint {
   override def usedVariables: Set[Variable] = Set(leftVar, rightVar)
+
+  override def toString = s"$leftVar == $rightVar"
 }
 
 class EqualityConstraint(val sv : ParameterizedStateVariable, val variable : VarRef) extends BindingConstraint {
   override def usedVariables: Set[Variable] = sv.usedVariables + variable
+
+  override def toString = s"$sv == $variable"
 }
 
 class VarInequalityConstraint(val leftVar : VarRef, val rightVar : VarRef) extends BindingConstraint {
   override def usedVariables: Set[Variable] = Set(leftVar, rightVar)
+
+  override def toString = s"$leftVar != $rightVar"
 }
 
 class InequalityConstraint(val sv : ParameterizedStateVariable, val variable : VarRef) extends BindingConstraint {
   override def usedVariables: Set[Variable] = sv.usedVariables + variable
+
+  override def toString = s"$sv != $variable"
 }
 
 class InConstraint(val leftVar : VarRef, val rightVars: Set[VarRef]) extends BindingConstraint {
   override def usedVariables: Set[Variable] = Set[Variable](leftVar) ++ rightVars
+
+  override def toString = s"$leftVar ∈ $rightVars"
 }

@@ -338,6 +338,7 @@ class AnmlProblem extends TemporalInterval with ChronicleContainer {
 
   private def getChronicle(blocks:Seq[AnmlBlock]) : Chronicle = {
     val chron = new Chronicle()
+    chron.origin = "anml-block"
 
     // this context is declared locally to avoid polluting the problem's context
     // they have the same interval so start/end map to the ones of the problem

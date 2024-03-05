@@ -18,15 +18,20 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Promise
 import java.util.concurrent.CancellationException
+import scala.util.Random
+import akka.actor.typed.SupervisorStrategy
+import akka.actor.typed.DeathPactException
 
 
 object Acting {
   case class Config(
     problem: String = "",
     timeout: Int = 60,
+    planningTimeout: Int = 10,
     interval: Int = 500,
     tasks: Seq[String] = Seq(),
     verbose: Int = 0,
+    preparableTasks: Seq[String] = Seq(),
     planSelection: Seq[String] = Seq("dfs","ord-dec","soca"),
     flawSelection: Seq[String] = Seq("hier","ogf","abs","lcf","eogf")
   )
@@ -52,7 +57,12 @@ object Acting {
         .valueName("<time>")
         .action((x, c) => c.copy(timeout = x.toInt))
         .text("When to shutdown the system in seconds. Default=60"),
-      opt[String]("interval")
+      opt[String]("planning-timeout")
+        .optional()
+        .valueName("<time>")
+        .action((x, c) => c.copy(planningTimeout = x.toInt))
+        .text("When to stop the planning in seconds. Default=10"),
+      opt[String]('i',"interval")
         .optional()
         .valueName("<time>")
         .action((x, c) => c.copy(interval = x.toInt))
@@ -65,13 +75,18 @@ object Acting {
       opt[Seq[String]]('p', "plan-selection")
         .optional()
         .valueName("<strategy1>,<strategy2>,...")
-        .action((x, c) => c.copy(flawSelection = x))
-        .text("Plan selection strategies to use. Default=dfs,ord-dec,soca"),
+        .action((x, c) => c.copy(planSelection = x))
+        .text("Plan selection strategies to use. Default=dfs,ord-dec,soca,robust"),
       opt[Seq[String]]('f', "flaw-selection")
         .optional()
         .valueName("<strategy1>,<strategy2>,...")
-        .action((x, c) => c.copy(planSelection = x))
+        .action((x, c) => c.copy(flawSelection = x))
         .text("Plan selection strategies to use. Default=hier,ogf,abs,lcf,eogf"),
+      opt[Seq[String]]("preparable-tasks")
+        .optional()
+        .valueName("<taskName1>,<taskName2>,...")
+        .action((x, c) => c.copy(preparableTasks = x))
+        .text("Tasks that may be prepared at any point to optimize the plan. Default=none"),
     )
   }
 
@@ -91,6 +106,7 @@ object Acting {
 
   def main(args: Array[String]): Unit = {
     RefCounter.useGlobalCounter = true
+    Random.setSeed(0)
     val config = parseArgs(args)
     // Set logging level to debug if verbose is enabled
     setLoggingLevel(config.verbose)
@@ -135,35 +151,56 @@ object Acting {
 
   val delayedTasks: mutable.Buffer[String] = mutable.Buffer()
 
-  def apply(config: Config): Behavior[TimedReply] = Behaviors.setup { context =>
-    Utils.setProblem(config.problem)
-    Utils.setPlanningOptions(config.planSelection, config.flawSelection)
-    val clock = context.spawn(Clock(config.interval), "clock")
-    val manager = context.spawn(ActivityManager(clock), "manager")
+  def apply(config: Config): Behavior[TimedReply] =  Behaviors
+      .supervise(Behaviors.setup[TimedReply] { context =>
+        Utils.setProblem(config.problem)
+        Utils.setPlanningOptions(config.planSelection, config.flawSelection, config.preparableTasks)
+        Utils.planningTimeout = config.planningTimeout
+        val clock = context.spawn(Clock(config.interval), "clock")
+        val manager = context.spawn(ActivityManager(clock), "manager")
+        val submittedTasks = mutable.Buffer[String]()
 
-    config.tasks.foreach { task =>
-      if (Utils.getDelay(task) > 0) {
-        delayedTasks.append(task)
-        val index = delayedTasks.indexOf(task)
-        clock ! ReplyAt(Utils.getDelay(task), index, context.self)
-      } else {
-        manager ! AddGoal(Utils.buildTask(task))
-      }
-    }
-    context.watch(manager)
-    Behaviors.receiveSignal[TimedReply] {
-      case (_, Terminated(_)) =>
-        Behaviors.stopped
-    }
+        clock ! StopClock
 
-    Behaviors.receiveMessage[TimedReply] {
-      case TimedReply(timepoint, index) =>
-        context.log.info("Adding goal " + delayedTasks(index))
-        val goal = Utils.buildTask(delayedTasks(index))
-        manager ! AddGoal(goal)
-        Behaviors.same
-    }
-  }
+        config.tasks.foreach { task =>
+          if (Utils.getDelay(task) > 0) {
+            delayedTasks.append(task)
+            val index = delayedTasks.indexOf(task)
+            clock ! ReplyAt(Utils.getDelay(task), index, context.self)
+          } else {
+            manager ! AddGoal(Utils.buildTask(task))
+            submittedTasks.append(task)
+          }
+        }
+        context.watch(manager)
+        if (submittedTasks.size == config.tasks.size) {
+          manager ! ShutdownAfterFinished
+        }
+        Behaviors.receiveSignal[TimedReply] {
+          case (_, Terminated(_)) =>
+            context.log.info("Shutting down the system")
+            Behaviors.stopped
+        }
+
+        Behaviors.receiveMessage[TimedReply] {
+          case TimedReply(timepoint, index) =>
+            context.log.info("Adding task " + delayedTasks(index))
+            val chronicle = Utils.buildTask(delayedTasks(index))
+            manager ! AddGoal(chronicle)
+            submittedTasks.append(delayedTasks(index))
+            if (submittedTasks.size == config.tasks.size) {
+              manager ! ShutdownAfterFinished
+            }
+            Behaviors.same
+        }
+
+    // Behaviors.receiveMessage[Tick] {
+    //   case Tick(timepoint) =>
+    //     // If all tasks have been executed, shutdown the system
+    //     manager ! ExecutedGoals
+    //     Behaviors.same
+    // }
+  }).onFailure[DeathPactException](SupervisorStrategy.stop)
 
 }
 

@@ -35,6 +35,7 @@ public class StateVariableBinding implements Resolver {
     @Override
     public PartialPlanModification asStateModification(PartialPlan partialPlan) {
         Chronicle chronicle = new Chronicle();
+		chronicle.setOrigin("StateVariableBinding");
         for(int i=0 ; i<a.args().length ; i++)
             chronicle.addConstraint(new VarEqualityConstraint(a.arg(i), b.arg(i)));
         return new ChronicleInsertion(chronicle);

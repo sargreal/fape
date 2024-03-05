@@ -131,6 +131,7 @@ case class AbstractChronicle(
 
   def getInstance(context: Context, temporalContext: TemporalInterval, pb: AnmlProblem, refCounter: RefCounter, optimizeTimepoints: Boolean = true) : Chronicle = {
     val chronicle = new Chronicle()
+    chronicle.origin = "abstract-chronicle"
 
     for((local,global) <- constantDeclarations) {
       if(context.contains(local) && context.hasGlobalVar(local)) {
@@ -159,6 +160,24 @@ case class AbstractChronicle(
 
   def subTasks = statements collect { case t:AbstractTask => t }
   def logStatements = statements collect { case s:AbstractLogStatement => s }
+
+  override
+  def toString = {
+    val sb = new StringBuilder
+    sb.append("AbstractChronicle(")
+    sb.append("Statements(")
+    sb.append(statements.mkString(","))
+    sb.append("), Constraints(")
+    sb.append(constraints.mkString(","))
+    sb.append("), Variables(")
+    sb.append(variableDeclarations.mkString(","))
+    sb.append("), Constants(")
+    sb.append(constantDeclarations.mkString(","))
+    sb.append("), Annotations(")
+    sb.append(annotations.mkString(","))
+    sb.append("))")
+    sb.toString()
+  }
 
 }
 

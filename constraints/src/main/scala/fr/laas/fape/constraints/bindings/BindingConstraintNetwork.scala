@@ -27,7 +27,7 @@ class BindingConstraintNetwork(toCopy: Option[BindingConstraintNetwork]) {
   private val increment = 10
 
   var domIds : Array[DomID] = null
-  var variables : Array[VarRef] = null
+  var variables : Array[VarRef] = null 
   var domains : Array[Domain] = null
 
   var vars : ArrayBuffer[ArrayBuffer[VarRef]] = null
@@ -177,6 +177,12 @@ class BindingConstraintNetwork(toCopy: Option[BindingConstraintNetwork]) {
 
   def stringValuesAsDomain(stringDomain: util.Collection[String]): Domain =
     new Domain(stringDomain.asScala.map(valuesIds(_)))
+  
+  def getVarFromStringValue(value: String): VarRef = {
+    val id = valuesIds(value)
+    val domID = domIds(id)
+    vars(domID).head
+  }
 
   def typeOf(v: VarRef): Type = v.typ
 

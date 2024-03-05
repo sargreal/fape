@@ -190,7 +190,13 @@ abstract class AbstractContext(val pb:AnmlProblem) {
     actions(localID) = globalID
   }
 
-  def addActionCondition(localID:LActRef, globalDef:Task) {
+  /**
+    * Adds both the local and global reference to an AbstractTask/Task.
+    *
+    * @param localID Local reference of the AbstractTask
+    * @param globalDef Global reference of the Task
+    */
+  def addTask(localID:LActRef, globalDef:Task) {
     assert(!actions.contains(localID) || actions(localID) == null)
     assert(!tasks.contains(localID) || tasks(localID) == null)
     tasks(localID) = globalDef

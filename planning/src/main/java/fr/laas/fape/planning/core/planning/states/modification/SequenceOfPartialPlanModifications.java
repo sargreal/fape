@@ -24,4 +24,9 @@ public class SequenceOfPartialPlanModifications implements PartialPlanModificati
                 .map(PartialPlanModification::involvedObjects)
                 .collect(Collectors.toSet());
     }
+
+    @Override
+    public String toString() {
+        return "SequenceOfPartialPlanModifications(" + modifications + ")";
+    }
 }

@@ -69,7 +69,7 @@ final class StnWithStructurals(
     var originalEdges: List[DistanceGraphEdge],
     var consistent: Boolean,
     val executed: mutable.Set[TPRef],
-    var _tpRefs: mutable.Map[Int, TPRef]
+    val _tpRefs: mutable.Map[Int, TPRef]
 ) extends STNU
     with DistanceMatrixListener {
 

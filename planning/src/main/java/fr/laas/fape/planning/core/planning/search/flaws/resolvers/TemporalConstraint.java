@@ -28,6 +28,7 @@ public class TemporalConstraint implements Resolver {
     @Override
     public PartialPlanModification asStateModification(PartialPlan partialPlan) {
         Chronicle chronicle = new Chronicle();
+		chronicle.setOrigin("TemporalConstraint");
         for(TPRef first : firsts) {
             for (TPRef second : seconds) {
                 chronicle.addConstraint(new MinDelayConstraint(first, second, min));

@@ -26,6 +26,7 @@ public class TemporalSeparation implements Resolver {
         assert !firstDB.hasSinglePersistence() && !secondDB.hasSinglePersistence();
 
         Chronicle chronicle = new Chronicle();
+		chronicle.setOrigin("TemporalSeparation");
         for(TPRef secondFirst : secondDB.getFirstTimePoints())
             chronicle.addConstraint(new MinDelayConstraint(firstDB.getSupportTimePoint(), secondFirst, 0));
         for(TPRef firstLast : firstDB.getLastTimePoints())

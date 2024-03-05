@@ -84,4 +84,16 @@ public class PlanningOptions {
     /** Ratio of the time the planner should pursue an interesting solution in depth first manner vs the
      * time it should push back the frontier by exploring least cost nodes */
     public float depthShallowRatio = GlobalOptions.getFloatOption("heur-depth-shallow-ratio");
+
+
+    /* Settings only used for optimizing acting */
+
+    /** The Type names for resources that are critical for plans. These will be used to analyze how much unused potential there is */
+    public List<String> resourceTypes = Arrays.asList("Cook");
+
+    /** Potential tasks that are expected to be submitted after the start */
+    public List<String> potentialTasks = new ArrayList<>();
+
+    /** Potential tasks that are expected to be submitted after the start */
+    public List<String> preparableTasks = new ArrayList<>(); //Arrays.asList("m_prepare_lettuce");
 }

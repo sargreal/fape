@@ -32,10 +32,10 @@ object DispatchActor {
     Behaviors.setup { context =>
       Behaviors.receiveMessage[DispatchEvent] {
         case req: ExecutionRequest =>
-          context.log.debug(s"Executing action ${Printer.action(req.plan,req.action)}")
-          setExecuting(req.action)
+          context.log.trace(s"Executing action ${Printer.action(req.plan,req.action)}")
+          Utils.setExecuting(req.action)
           val endTime = req.plan.getEarliestStartTime(req.action.end)
-          context.log.debug(s"Expected finish at t=$endTime")
+          context.log.trace(s"Expected finish at t=$endTime")
           data.clock ! ReplyAt(endTime, req.action.id.toInt, context.self)
           executing(MExecutingRequests(data.requests + (req.action.id -> req), data.clock))
         case TimedReply(timepoint, reference) =>
@@ -44,7 +44,7 @@ object DispatchActor {
               context.log.debug(
                 s"[$timepoint] Action ${Printer.action(req.plan,req.action)} executed"
               )
-              setExecuted(req.action, req.plan)
+              Utils.setExecuted(req.action, req.plan)
               req.actorRef ! DispatchSuccess(req.action, timepoint)
               executing(MExecutingRequests(data.requests - req.action.id, data.clock))
             case None =>
@@ -59,7 +59,7 @@ object DispatchActor {
               val t = req.plan.getEarliestStartTime(timepointActive.tp)
               timepointActive.tp.id match {
                 case req.action.end.id =>
-                  setExecuted(req.action, req.plan)
+                  Utils.setExecuted(req.action, req.plan)
                   context.log.debug(
                     s"[$t] Action ${Printer.action(req.plan,req.action)} executed"
                   )
@@ -80,27 +80,5 @@ object DispatchActor {
       }
     }
 
-    def setExecuting(act: Action) {
-      act.setStatus(ActionStatus.EXECUTING)
-      if (act.hasParent) {
-        setExecuting(act.parent)
-      }
-    }
 
-    /**
-      * Sets the status of the action and all its parents to EXECUTED if all siblings have been executed as well.
-      *
-      * @param act
-      * @param plan
-      */
-    def setExecuted(act: Action, plan: PartialPlan) {
-      plan.getAllActions().stream.filter(_.hasParent).filter(_.parent == act).filter(_.status != ActionStatus.EXECUTED).count() match {
-        case 0 =>
-          act.setStatus(ActionStatus.EXECUTED)
-          if (act.hasParent) {
-            setExecuted(act.parent, plan)
-          }
-        case _ =>
-      }
-    }
 }

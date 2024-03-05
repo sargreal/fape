@@ -227,6 +227,8 @@ public class CausalNetworkExt implements StateExtension {
             for(Event pis : toRemove) {
                 possiblyInterferingTimelines.remove(pis);
             }
+            // System.out.println("Potential Supporters " + potentialSupporters.get(tlID));
+            // System.out.println("Potential Supporters " + toRemove);
             potentialSupporters.put(tlID, potentialSupporters.get(tlID).withoutAll(toRemove));
 
             // infer any possible temporal constraints from the need for indirect supporters

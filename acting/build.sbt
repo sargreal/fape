@@ -16,4 +16,6 @@ libraryDependencies ++= Seq(
   //  "org.slf4j" % "jcl-over-slf4j" % "1.7.10"
 )
 
+mainClass := Some("fr.laas.fape.acting.Acting")
 
+exportJars := true

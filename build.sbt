@@ -41,7 +41,7 @@ lazy val commonSettings = Seq(
 )
 
 lazy val root = project.in(file(".")).
-  aggregate(fapePlanning, constraints, anml, svgPlot, structures).
+  aggregate(fapeActing, fapePlanning, constraints, anml, svgPlot, structures).
 
   settings(
     publish := {},

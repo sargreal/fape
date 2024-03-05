@@ -14,8 +14,8 @@ public class UnrefinedTaskFinder implements FlawFinder {
     public List<Flaw> getFlaws(PartialPlan plan, Planner planner) {
         List<Flaw> flaws = new LinkedList<>();
 
-        for(Task ac : plan.getOpenTasks())
-            flaws.add(new UnrefinedTask(ac));
+        for(Task task : plan.getOpenTasks())
+            flaws.add(new UnrefinedTask(task));
 
         return flaws;
     }

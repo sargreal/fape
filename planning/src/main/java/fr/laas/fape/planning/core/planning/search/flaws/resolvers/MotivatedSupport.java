@@ -71,14 +71,14 @@ public class MotivatedSupport implements Resolver {
         }
 
         // Look for the action condition with ID actRef
-        Task ac = act.context().tasks().apply(actRef);
+        Task task = act.context().tasks().apply(actRef);
 
         // add equality constraint between all args
-        for (int i = 0; i < ac.args().size(); i++) {
-            st.addUnificationConstraint(toSupport.args().get(i), ac.args().get(i));
+        for (int i = 0; i < task.args().size(); i++) {
+            st.addUnificationConstraint(toSupport.args().get(i), task.args().get(i));
         }
         //enforce equality of time points and add the support in the task network
-        st.addSupport(ac, toSupport);
+        st.addSupport(task, toSupport);
 
         return true;
     }

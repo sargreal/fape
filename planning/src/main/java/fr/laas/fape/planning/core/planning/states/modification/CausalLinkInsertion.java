@@ -29,4 +29,9 @@ public class CausalLinkInsertion implements PartialPlanModification {
     public Collection<Object> involvedObjects() {
         return Arrays.asList(supporter, consumer);
     }
+
+    @Override
+    public String toString() {
+        return "CausalLinkInsertion(supporter=" + supporter + ",consumer=" + consumer + ")";
+    }
 }

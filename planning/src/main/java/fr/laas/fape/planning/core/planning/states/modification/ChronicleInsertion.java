@@ -29,4 +29,9 @@ public class ChronicleInsertion implements PartialPlanModification {
         involved.add(chronicle);
         return involved;
     }
+
+    @Override
+    public String toString() {
+        return "ChronicleInsertion(" + chronicle + ")";
+    }
 }

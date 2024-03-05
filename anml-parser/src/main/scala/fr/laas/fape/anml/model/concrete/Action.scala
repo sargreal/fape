@@ -6,6 +6,7 @@ import fr.laas.fape.anml.model.{Context, _}
 import fr.laas.fape.anml.model.concrete.statements.Statement
 
 import scala.collection.JavaConverters._
+import fr.laas.fape.anml.model.abs.time.TimepointType
 
 
 /** Represents a concrete action that is to be inserted into a plan. All parameters of the action refer to one global
@@ -29,7 +30,7 @@ class Action(
     val id:ActRef,
     val interval: TemporalInterval,
     val chronicle: Chronicle,
-    val parentAction:Option[Action],
+    var parentAction:Option[Action],
     refCounter: RefCounter)
   extends TemporalInterval with ChronicleContainer with VariableUser {
 
@@ -57,6 +58,8 @@ class Action(
 
   /** Returns true if the action was defined with the `motivated` keyword. False otherwise. */
   def mustBeMotivated = abs.isTaskDependent
+
+  def isStructural = start.genre.isStructural
 
   /** Assigns a new status to the action.
     * Allowed transitions are
@@ -183,6 +186,11 @@ object Action {
 
     val act = newAction(pb, abs, new LActRef(), refCounter, None, Some(pb.context)) //TODO: fix with real context
 
+    act
+  }
+
+  def getNewSupportingAction(pb:AnmlProblem, abs:AbstractAction, supportedTask: Task, refCounter: RefCounter) : Action = {
+    val act = newAction(pb, abs, new LActRef(), refCounter, supportedTask.parent, Some(pb.context)) //TODO: fix with real context
     act
   }
 }

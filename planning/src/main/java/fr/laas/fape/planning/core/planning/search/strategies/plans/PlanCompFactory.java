@@ -4,6 +4,7 @@ import fr.laas.fape.planning.core.planning.planner.Planner;
 import fr.laas.fape.planning.core.planning.search.strategies.plans.tsp.Htsp;
 import fr.laas.fape.planning.core.planning.search.strategies.plans.tsp.MinSpanTreeComp;
 import fr.laas.fape.planning.exceptions.FAPEException;
+import fr.laas.fape.planning.util.TinyLogger;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -12,6 +13,7 @@ public class PlanCompFactory {
 
     public static SeqPlanComparator get(Planner planner, List<String> comparators) {
         List<PartialPlanComparator> compList = new LinkedList<>();
+        TinyLogger.LogInfo(comparators.toString());
         for (String compID : comparators) {
             switch (compID) {
                 case "bfs":
@@ -46,6 +48,9 @@ public class PlanCompFactory {
                     break;
                 case "makespan":
                     compList.add(new MakespanComp());
+                    break;
+                case "robust":
+                    compList.add(new Robustness());
                     break;
                 default:
                     if(compID.startsWith("tsp-"))

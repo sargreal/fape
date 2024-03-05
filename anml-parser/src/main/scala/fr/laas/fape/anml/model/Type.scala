@@ -28,6 +28,11 @@ trait Type {
 
   def isNumeric : Boolean
   override def toString = name
+
+  override def equals(obj: Any): Boolean = obj match {
+    case t:Type => t.name == name
+    case _ => false
+  }
 }
 
 
