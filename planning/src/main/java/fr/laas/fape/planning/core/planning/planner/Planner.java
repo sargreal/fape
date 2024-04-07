@@ -109,7 +109,6 @@ public class Planner {
                         .sorted(Comparator.comparingLong(s -> s.lastRecord))
                         .limit(mostRecentPendingToKeep)
                         .collect(Collectors.toSet());
-
         Set<SearchNode> bests =
                 allStates.keySet().stream()
                         .filter(s -> s.status == SearchNode.Status.PENDING)
@@ -482,6 +481,7 @@ public class Planner {
                         children.add(next);
                         numGeneratedPartialPlans++;
                     } else {
+                        next.setInconsistent();
                         TinyLogger.LogInfo(node.getState(), "     Dead-end reached for plan: %s", next.getID());
                         //inconsistent plan, doing nothing
                     }
@@ -493,8 +493,9 @@ public class Planner {
                         searchView.setProperty(next, SearchView.COMMENT, hrComment);
                     }
                 } catch (InconsistencyException e) {
+                    next.setInconsistent();
                     TinyLogger.LogInfo(node.getState(), "     Inconsistency when applying: %s", next.getID());
-                    e.printStackTrace();
+                    // e.printStackTrace();
                     if(options.displaySearch) {
                         searchView.addNode(next);
                         searchView.setDeadEnd(next);
@@ -507,7 +508,7 @@ public class Planner {
             return children;
         } catch (InconsistencyException e) {
             TinyLogger.LogInfo(node.getState(), "     Inconsistency while expanding: %s", node.getID());
-            e.printStackTrace();
+            // e.printStackTrace();
             if(options.displaySearch) {
                 searchView.setDeadEnd(node);
                 searchView.setProperty(node, SearchView.COMMENT, e.toString());
@@ -532,7 +533,9 @@ public class Planner {
 
             //we just take the first flaw and its resolvers
             Flaw flaw = optFlaw.get();
+            TinyLogger.LogInfo(plan, "     [%s] ff: Resolving %s", plan.mID, flaw);
             List<Resolver> resolvers = flaw.getResolvers(plan, this);
+            
 
             if (resolvers.isEmpty()) {
                 throw new FlawWithNoResolver(flaw);

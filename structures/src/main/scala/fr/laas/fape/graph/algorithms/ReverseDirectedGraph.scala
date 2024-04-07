@@ -41,4 +41,6 @@ class ReverseDirectedGraph[V, EL](val dg : DirectedGraph[V, Nothing, Edge[V]]) e
   override def deleteEdge(e: Edge[V]): Unit = ???
 
   def cc: Graph[V, Nothing, E] = ???
+
+  override def deleteVertex(v: V): Unit = ???
 }

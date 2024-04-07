@@ -58,4 +58,13 @@ public class SupportingTimeline implements Resolver {
             return false;
         }
     }
+
+    @Override
+    public String toString() {
+        return "SupportingTimeline{" +
+                "supporterID=" + supporterID +
+                ", supportingComponent=" + supportingComponent +
+                ", consumerID=" + consumerID +
+                '}';
+    }
 }

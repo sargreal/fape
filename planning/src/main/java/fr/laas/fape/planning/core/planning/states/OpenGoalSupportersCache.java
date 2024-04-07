@@ -131,7 +131,11 @@ class OpenGoalSupportersCache implements StateExtension {
                  .getPotentialSupporters(og).stream()
                  .map(e -> new SupportingTimeline(e.supporterID, e.changeNumber, og));
 
-        return Stream.concat(Stream.concat(taskSupports, actionSupports), timelineSupport)
+        List<Resolver> result = Stream.concat(Stream.concat(taskSupports, actionSupports), timelineSupport)
                 .collect(Collectors.toList());
+
+        // System.out.println("Resolvers for "+og+": "+result);
+
+        return result;
     }
 }

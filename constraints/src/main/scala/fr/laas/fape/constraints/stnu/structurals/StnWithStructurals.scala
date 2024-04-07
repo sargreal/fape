@@ -461,7 +461,36 @@ final class StnWithStructurals(
     w + rigidAwareDist(v, u) >= 0
 
   /** Remove a timepoint and all associated constraints from the STN */
-  override def removeTimePoint(tp: TPRef): Unit = ???
+  override def removeTimePoint(tp: TPRef): Unit = {
+    val index = toIndex(tp)
+    if (index == -1)
+      return
+    if (rigidRelations.isAnchored(tp)) {
+      val anchor = rigidRelations.anchorOf(tp)
+      val distToAnchor = rigidRelations.distToAnchor(tp)
+      val distFromAnchor = rigidRelations.distFromAnchor(tp)
+      val anchorIndex = toIndex(anchor)
+      dist.compileAwayRigid(index, anchorIndex)
+      timepointByIndex(index) = null
+      removeFlexIndex(tp)
+      rigidRelations.removeRigidTimepoint(tp)
+      for (e <- originalEdges) {
+        if (e.from == tp || e.to == tp) {
+          originalEdges = originalEdges.filter(_ != e)
+        }
+      }
+    } else {
+      timepointByIndex(index) = null
+      removeFlexIndex(tp)
+      dist.eraseNode(index)
+      for (e <- originalEdges) {
+        if (e.from == tp || e.to == tp) {
+          originalEdges = originalEdges.filter(_ != e)
+        }
+      }
+    }
+    _tpRefs.remove(tp.id)
+  }
 
   /** Set the distance from the global start of the STN to tp to time */
   override def setTime(tp: TPRef, time: Int): Unit =

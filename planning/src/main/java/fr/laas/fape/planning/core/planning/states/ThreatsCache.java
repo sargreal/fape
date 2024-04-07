@@ -9,17 +9,17 @@ import java.util.*;
 class ThreatsCache implements StateExtension {
 
     private final HashSet<PotentialThreat> threats;
-    private final PartialPlan st;
+    private final PartialPlan plan;
 
     ThreatsCache(PartialPlan initialPartialPlan) {
-        this.st = initialPartialPlan;
+        this.plan = initialPartialPlan;
         this.threats = new HashSet<>();
 
-        st.tdb.getTimelinesStream().forEach(tl -> timelineAdded(tl));
+        plan.tdb.getTimelinesStream().forEach(tl -> timelineAdded(tl));
     }
 
     private ThreatsCache(ThreatsCache toCopy, PartialPlan st) {
-        this.st = st;
+        this.plan = st;
         this.threats = new HashSet<>(toCopy.threats);
     }
 
@@ -48,11 +48,11 @@ class ThreatsCache implements StateExtension {
 
     @Override
     public void timelineAdded(Timeline a) {
-        for(Timeline b : st.tdb.getTimelines()) {
-            if(!st.unifiable(a.stateVariable, b.stateVariable))
+        for(Timeline b : plan.tdb.getTimelines()) {
+            if(!plan.unifiable(a.stateVariable, b.stateVariable))
                 continue;
 
-            if(isThreatening(st, a, b)) {
+            if(isThreatening(plan, a, b)) {
                 threats.add(new PotentialThreat(a, b));
             }
         }
@@ -75,8 +75,8 @@ class ThreatsCache implements StateExtension {
                 toRemove.add(pt);
         threats.removeAll(toRemove);
 
-        for(Timeline b : st.tdb.getTimelines()) {
-            if(isThreatening(st, tl, b)) {
+        for(Timeline b : plan.tdb.getTimelines()) {
+            if(isThreatening(plan, tl, b)) {
                 threats.add(new PotentialThreat(tl, b));
             }
         }
@@ -86,12 +86,12 @@ class ThreatsCache implements StateExtension {
         List<PotentialThreat> toRemove = new ArrayList<>();
         List<Flaw> verifiedThreats = new ArrayList<>();
         for(PotentialThreat pt : threats) {
-            Timeline tl1 = st.getTimeline(pt.id1);
-            Timeline tl2 = st.getTimeline(pt.id2);
-            if(isThreatening(st, tl1, tl2)) {
+            Timeline tl1 = plan.getTimeline(pt.id1);
+            Timeline tl2 = plan.getTimeline(pt.id2);
+            if(isThreatening(plan, tl1, tl2)) {
                 verifiedThreats.add(new Threat(tl1, tl2));
             } else {
-                assert !isThreatening(st, tl2, tl1);
+                assert !isThreatening(plan, tl2, tl1);
                 toRemove.add(pt);
             }
         }

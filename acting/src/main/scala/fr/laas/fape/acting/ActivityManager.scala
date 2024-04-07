@@ -169,9 +169,28 @@ class ActivityManager(
             Behaviors.same
           // Errors
           case (NoPlanExists(reqID), x: FullPlan) =>
-            context.log.info(x.plan.csp.stn.toStringRepresentation)
-            context.log.error(s"No plan exists for request $reqID")
+            context.log.error(s"No plan exists for request $reqID, trying replanning")
+            planner ! TryReplan(
+              x.plan,
+              FiniteDuration(Utils.planningTimeout, TimeUnit.SECONDS),
+              0,
+              getReqID,
+              context.self
+            )
+            Behaviors.same
+          case (ReplanFailed(reqID), _) =>
+            context.log.error(s"Replanning failed for request $reqID, there is no way to procede")
             Behaviors.stopped
+          case (RepairFailed(reqID), x: FullPlan) =>
+            context.log.error(s"Repair failed for request $reqID, trying replanning")
+            planner ! TryReplan(
+              x.plan,
+              FiniteDuration(Utils.planningTimeout, TimeUnit.SECONDS),
+              0,
+              getReqID,
+              context.self
+            )
+            Behaviors.same
           case (PlanningTimedOut(reqID), _) =>
             context.log.error(s"Planning timed out for request $reqID")
             Behaviors.stopped
@@ -232,8 +251,8 @@ class ActivityManager(
 
           case (AddGoal(goal), x: FullPlan) =>
             clock ! StopClock
-            integrateNewGoal(goal, context, Some(x))
-            waitingForPlan(x)
+            val newPlan = integrateNewGoal(goal, context, Some(x))
+            waitingForPlan(newPlan)
           case (ShutdownAfterFinished, _) =>
             goIdle = false
             Behaviors.same
@@ -376,7 +395,7 @@ class ActivityManager(
       getReqID,
       context.self
     )
-    return FullPlan(pplan, DispatchableNetwork.getDispatchableNetwork(pplan.csp.stn, pplan.csp.stn.timepoints.asScala.toSet.asJava))
+    return FullPlan(pplan.cc(false), DispatchableNetwork.getDispatchableNetwork(pplan.csp.stn, pplan.csp.stn.timepoints.asScala.toSet.asJava))
   }
 
 }

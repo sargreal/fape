@@ -37,15 +37,15 @@ sealed trait PlannerEvent extends Event
 
 object GetPlan extends PlannerEvent
 case class GetPlan(state: PartialPlan, forHowLong: FiniteDuration, currentTime: Int, reqID: Int, actorRef: ActorRef[PlannerReply], previousUnoptimizedPlan: Option[PartialPlan] = None) extends PlannerEvent
-case class TryRepair(state: PartialPlan, forHowLong: FiniteDuration, reqID: Int) extends PlannerEvent
-case class TryReplan(state: PartialPlan, forHowLong: FiniteDuration, reqID: Int) extends PlannerEvent
-case object RepairFailed extends PlannerEvent
-case object ReplanFailed extends PlannerEvent
+case class TryRepair(state: PartialPlan, forHowLong: FiniteDuration, currentTime: Int, reqID: Int, actorRef: ActorRef[PlannerReply]) extends PlannerEvent
+case class TryReplan(state: PartialPlan, forHowLong: FiniteDuration, currentTime: Int, reqID: Int, actorRef: ActorRef[PlannerReply]) extends PlannerEvent
 
 sealed trait PlannerReply extends ManagerEvent
 case class PlanFound(state: PartialPlan, reqID: Int) extends PlannerReply
 case class NoPlanExists(reqID: Int) extends PlannerReply
 case class PlanningTimedOut(reqID: Int) extends PlannerReply
+case class RepairFailed(reqID: Int) extends PlannerReply
+case class ReplanFailed(reqID: Int) extends PlannerReply
 
 sealed trait DispatchEvent extends Event
 

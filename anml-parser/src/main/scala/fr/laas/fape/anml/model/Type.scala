@@ -30,7 +30,7 @@ trait Type {
   override def toString = name
 
   override def equals(obj: Any): Boolean = obj match {
-    case t:Type => t.name == name
+    case t:Type => t.name.equals(name)
     case _ => false
   }
 }

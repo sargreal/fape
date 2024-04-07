@@ -72,6 +72,7 @@ public class TimelinesManager implements Reporter, Iterable<Timeline> {
 
     public void addTimeline(Timeline tl) {
         assert !hasTimeline(tl);
+        // System.out.println("Adding timeline "+tl);
         if(tl.mID >= timelines.length)
             timelines = Arrays.copyOf(timelines, timelines.length*2);
         timelines[tl.mID] = tl;
@@ -82,6 +83,7 @@ public class TimelinesManager implements Reporter, Iterable<Timeline> {
     }
 
     public void removeTimeline(Timeline tl) {
+        // System.out.println("Removing timeline "+tl);
         assert timelines[tl.mID] == tl;
         timelines[tl.mID] = null;
         consumers.remove(tl);
@@ -90,6 +92,7 @@ public class TimelinesManager implements Reporter, Iterable<Timeline> {
     }
 
     public Timeline getTimeline(int tdbID) {
+        assert timelines[tdbID] != null : "Timeline "+tdbID+" does not exist";
         assert timelines[tdbID].mID == tdbID;
         return timelines[tdbID];
     }
@@ -173,6 +176,7 @@ public class TimelinesManager implements Reporter, Iterable<Timeline> {
      * @param after a chain component of tdb after which the chain of included will be added
      */
     public void insertTimelineAfter(PartialPlan st, Timeline tdb, Timeline included, ChainComponent after) {
+        // System.out.println("Inserting timeline "+included+" after "+after+" in "+tdb);
         if(included.mID == 16)
             assert tdb.size() != 0;
         assert tdb.contains(after);
@@ -203,7 +207,7 @@ public class TimelinesManager implements Reporter, Iterable<Timeline> {
         // copy all remaining components
         if(included.size() > 0) {
             assert tdb.getLast() == after || included.size() == 1 && !included.getFirst().change:
-                    "Integrating a timeline with transitions in the middle of another one. " +
+                    "Integrating timeline " +included+ " with transitions in the middle of timeline "+tdb+". " +
                     "While this should work with the current implementation it might create unexpected problems " +
                     "because of unexpected unification constraints between two non adjacent chain components.";
 
@@ -320,7 +324,7 @@ public class TimelinesManager implements Reporter, Iterable<Timeline> {
                     ChainComponent origComp = theDatabase.get(i);
                     remove.add(origComp);
                     ChainComponent pc = origComp.deepCopy();
-                    newDB = extendTimelineWithComponent(newDB, pc);
+                    newDB = newDB.with(pc);
                 }
                 addTimeline(newDB);
                 theDatabase = removeFromTimeline(theDatabase, comp);

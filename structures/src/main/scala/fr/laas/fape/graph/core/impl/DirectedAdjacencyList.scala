@@ -10,7 +10,7 @@ abstract class DirectedAdjacencyList[V, EL, E <: Edge[V]](val mOutEdges : mutabl
                                     val mVertices : mutable.ArrayBuffer[V])
   extends DirectedGraph[V,EL,E] {
 
-  var mNumVertices = mOutEdges.length
+  var mNumVertices = mIndexes.size
 
   def this() = this(new mutable.ArrayBuffer[List[E]](0), new mutable.ArrayBuffer[List[E]](0),
                     mutable.Map[V, Int](), new mutable.ArrayBuffer[V](0))
@@ -30,7 +30,7 @@ abstract class DirectedAdjacencyList[V, EL, E <: Edge[V]](val mOutEdges : mutabl
     return vertId
   }
 
-  def vertices = mVertices.toSeq
+  def vertices = mVertices.filter(v => contains(v)).toSeq
 
   def addEdge(e:E) { ??? }
 
@@ -69,4 +69,13 @@ abstract class DirectedAdjacencyList[V, EL, E <: Edge[V]](val mOutEdges : mutabl
   def contains(v: V): Boolean = mIndexes.contains(v)
 
   def numVertices = mNumVertices
+
+  def deleteVertex(v: V) {
+    val id = mIndexes(v)
+    mOutEdges(id) = List[E]()
+    mInEdges(id) = List[E]()
+    // mVertices(id) = null
+    mIndexes.remove(v)
+    mNumVertices -= 1
+  }
 }

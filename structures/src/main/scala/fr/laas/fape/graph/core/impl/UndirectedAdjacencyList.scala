@@ -89,4 +89,12 @@ abstract class UndirectedAdjacencyList[V, EL, E <: Edge[V]](val mEdges : mutable
    * @return
    */
   def edges(v: V): Seq[E] = mEdges(mIndexes(v))
+
+  def deleteVertex(v: V): Unit = {
+    val vertId = mIndexes(v)
+    mVertices.remove(vertId)
+    mEdges.remove(vertId)
+    mIndexes.remove(v)
+    mNumVertices -= 1
+  }
 }

@@ -60,6 +60,8 @@ trait Graph[V, +EL, E <: Edge[V]] {
     for(e <- edges())
       if(toDelete(e))
         deleteEdge(e)
+  
+  def deleteVertex(v:V)
 
   /** Builds a new copy of the graph. */
   def cc : Graph[V, EL, E]

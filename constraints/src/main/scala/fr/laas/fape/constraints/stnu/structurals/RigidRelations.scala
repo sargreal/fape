@@ -71,4 +71,16 @@ final class RigidRelations(private val anchored: JMap[TPRef, JMap[TPRef,Int]],
     _tpRefs.putIfAbsent(from.id, from)
     _tpRefs.putIfAbsent(to.id, to)
   }
+
+  def removeRigidTimepoint(tp: TPRef): Unit = {
+    if(isAnchor(tp)) {
+      for((other, dist) <- anchored.get(tp).asScala) {
+        anchored.get(other).remove(tp)
+        if(anchored.get(other).isEmpty)
+          anchored.remove(other)
+      }
+      anchored.remove(tp)
+      _anchorOf(tp.id) = null
+    }
+  }
 }

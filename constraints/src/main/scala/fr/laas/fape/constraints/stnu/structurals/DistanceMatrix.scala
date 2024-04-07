@@ -89,7 +89,7 @@ final class DistanceMatrix(
   /**
     * Removes a node from the network. Note that all constraints previously inferred will stay in the matrix
     */
-  private def eraseNode(n: Int): Unit = {
+  def eraseNode(n: Int): Unit = {
     util.Arrays.fill(dists(n), INF)
     for(i <- dists.indices)
       dists(i)(n) = INF

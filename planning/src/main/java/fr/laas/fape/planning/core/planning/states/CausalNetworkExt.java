@@ -84,10 +84,12 @@ public class CausalNetworkExt implements StateExtension {
 
     ISet<Event> getPotentialSupporters(Timeline tl) {
         processPending();
-        return potentialSupporters.get(tl.mID).filter((Predicate<Event>) e ->
+        ISet<Event> result =  potentialSupporters.get(tl.mID).filter((Predicate<Event>) e ->
                 container.unifiable(
                         container.getTimeline(tl.mID).getGlobalConsumeValue(),
                         container.getTimeline(e.supporterID).getChangeNumber(e.changeNumber).getSupportValue()));
+        // System.out.println("Returned Potential Supporters of tl="+tl +" " + result);
+        return result;
     }
 
     private void processPending() {
@@ -166,7 +168,14 @@ public class CausalNetworkExt implements StateExtension {
                 }
             }
         }
+        // for(int tlID : addedTimelines) {
+        //     System.out.println("Potential Supporters of tl="+tlMan.getTimeline(tlID) +" " + potentialSupporters.get(tlID));
+        // }
         filterUnfeasibleSupports();
+        // System.out.println("After filtering");
+        // for(int tlID : addedTimelines) {
+        //     System.out.println("Potential Supporters of tl="+tlMan.getTimeline(tlID) +" " + potentialSupporters.get(tlID));
+        // }
 
         addedTimelines.clear();
         extendedTimelines.clear();
@@ -412,19 +421,26 @@ public class CausalNetworkExt implements StateExtension {
         if(!consumer.hasSinglePersistence() && changeNumber != potentialSupporter.numChanges()-1)
             return false;
 
+        // verify that the referenced change can be before the consumer
         final ChainComponent supportingCC = potentialSupporter.getChangeNumber(changeNumber);
-        if(!container.canAllBeBefore(supportingCC.getSupportTimePoint(), consumer.getFirstTimePoints()))
+        if(!container.canAllBeBefore(supportingCC.getSupportTimePoint(), consumer.getFirstTimePoints())) {
+            // System.out.println("Causality: "+ changeNumber + " of supporter " +potentialSupporter+" not before consumer " + consumer  );
             return false;
+        }
 
         // if the supporter is not the last change, check that we can fit the consuming db before the next change
         // and that this change directly support the presistence (no statement can be added between the two)
         if(changeNumber < potentialSupporter.numChanges()-1) {
             final ChainComponent afterCC = potentialSupporter.getChangeNumber(changeNumber+1);
-            if(!container.canAllBeBefore(consumer.getLastTimePoints(), afterCC.getConsumeTimePoint()))
+            if(!container.canAllBeBefore(consumer.getLastTimePoints(), afterCC.getConsumeTimePoint())) {
+                // System.out.println("Causality: consumer " + consumer+" not before "  + changeNumber + " of supporter " +potentialSupporter);
                 return false;
+            }
 
-            if(!container.unifiable(supportingCC.getSupportValue(), consumer.getGlobalConsumeValue()))
+            if(!container.unifiable(supportingCC.getSupportValue(), consumer.getGlobalConsumeValue())) {
+                // System.out.println("Causality: supporter "+potentialSupporter+" value " + supportingCC.getSupportValue()+" and consumer "+consumer+" value "  +  consumer.getGlobalConsumeValue() + " not unifiable");
                 return false;
+            }
         }
 
         return true;
@@ -438,6 +454,13 @@ public class CausalNetworkExt implements StateExtension {
             }
             potentialSupporters.remove(tl.mID);
         }
+        for (Map.Entry<Integer, ISet<Event>> entry : potentialSupporters.entrySet()) {
+            ISet<Event> updated = entry.getValue().filter((Predicate<Event>) e -> e.supporterID != tl.mID);
+            potentialSupporters.put(entry.getKey(), updated);
+        }
+        addedTimelines.remove(tl.mID);
+        if (extendedTimelines.contains(tl.mID))
+            extendedTimelines.remove(extendedTimelines.indexOf(tl.mID));
         removedTimelines.add(tl.mID);
     }
 

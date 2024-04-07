@@ -95,4 +95,9 @@ class FullIntIntDigraph (protected var capacity : Int,
       newMatrix(i) = matrix(i).clone()
     new FullIntIntDigraph(capacity, defaultValue, numVertices, newMatrix)
   }
+  
+  def deleteVertex(v: Int): Unit = {
+    throw new UnsupportedOperationException("Cannot remove a vertex by reference in a matrix " +
+      "since the size of the matrix cannot be reduced without losing vertexes.")
+  }
 }

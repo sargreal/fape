@@ -7,6 +7,7 @@ import fr.laas.fape.planning.core.planning.planner.Planner.EPlanState
 import fr.laas.fape.planning.core.planning.planner.{Planner, PlanningOptions}
 import fr.laas.fape.planning.exceptions.PlanningInterruptedException
 import scala.collection.JavaConverters._
+import scala.collection.JavaConversions._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -16,6 +17,7 @@ import scala.concurrent.ExecutionContext
 import scala.util.Random
 import fr.laas.fape.anml.parser.PType
 import fr.laas.fape.anml.model.Type
+import fr.laas.fape.anml.model.concrete.ActionStatus
 
 object PlanningActor {
   private def time = System.currentTimeMillis()
@@ -76,6 +78,71 @@ object PlanningActor {
               previousUnoptimizedPlan
             )
             planning(Some(planner))
+          case (
+                TryReplan(
+                  failingPlan,
+                  duration,
+                  currentTime,
+                  reqID,
+                  replyTo
+                ),
+                Some(previousPlanner)
+              ) =>
+            previousPlanner.stopPlanning = true
+
+            val cleanedPlan = failingPlan.cc(false)
+
+            try {
+              for (action <- failingPlan.getAllActions()) {
+                if (action.status == ActionStatus.PENDING || action.status == ActionStatus.FAILED) {
+                  cleanedPlan.removeAction(action)
+                }
+              }
+              println("Remaining actions")
+              for (action <- cleanedPlan.getAllActions()) {
+                println(action)
+              }
+              println("Remaining tasks")
+              for (task <- cleanedPlan.taskNet.getAllTasks()) {
+                println(task)
+              }
+              println("Remaining timelines")
+              for (timeline <- cleanedPlan.getTimelines()) {
+                println(timeline)
+              }
+              println("Remaining watchers")
+              for (c <- cleanedPlan.csp.bindings.watchers) {
+                println(c)
+              }
+              println("Remaining constraints")
+              for (c <- cleanedPlan.csp.bindings.constraints) {
+                println(c)
+              }
+              println("Remaining pending constraints")
+              for (c <- cleanedPlan.csp.bindings.pendingConstraints) {
+                println(c)
+              }
+              val planner = new Planner(cleanedPlan, Utils.getPlanningOptions)
+              launchPlanningProcess(
+                planner,
+                duration,
+                currentTime,
+                reqID,
+                replyTo,
+                context.self,
+                None,
+                replan = true
+              )
+              planning(Some(planner))
+            } catch {
+              case e: Throwable =>
+                println("Error while cleaning plan")
+                e.printStackTrace()
+                replyTo ! ReplanFailed(reqID)
+                idle()
+            }
+            
+            
         }
       }
     }
@@ -87,13 +154,15 @@ object PlanningActor {
       reqID: Int,
       replyTo: ActorRef[PlannerReply],
       self: ActorRef[PlannerEvent],
-      previousUnoptimizedPlan: Option[PartialPlan]
+      previousUnoptimizedPlan: Option[PartialPlan],
+      repair: Boolean = false,
+      replan: Boolean = false
   ): Future[Unit] = {
     Future {
       try {
         val solution = planner.search(time + duration.toMillis)
         if (solution != null) {
-          optimizePlan(solution, Utils.getPlanningOptions, currentTime) match {
+          insertPreparations(solution, Utils.getPlanningOptions, currentTime) match {
             case Some(optPlan) =>
               self ! GetPlan(
                 optPlan,
@@ -113,7 +182,13 @@ object PlanningActor {
           } else if (planner.planState == EPlanState.TIMEOUT && !planner.stopPlanning) {
             replyTo ! PlanningTimedOut(reqID)
           } else {
-            replyTo ! NoPlanExists(reqID)
+            if (replan) {
+              replyTo ! ReplanFailed(reqID)
+            } else if(repair) {
+              replyTo ! RepairFailed(reqID)
+            } else {
+              replyTo ! NoPlanExists(reqID)
+            }
           }
         }
       } catch {
@@ -129,6 +204,10 @@ object PlanningActor {
           x.printStackTrace()
           if (previousUnoptimizedPlan.isDefined) {
             replyTo ! PlanFound(previousUnoptimizedPlan.get, reqID)
+          } else if (replan) {
+            replyTo ! ReplanFailed(reqID)
+          } else if(repair) {
+            replyTo ! RepairFailed(reqID)
           } else {
             replyTo ! NoPlanExists(reqID)
           }
@@ -136,7 +215,7 @@ object PlanningActor {
     }
   }
 
-  def optimizePlan(
+  def insertPreparations(
       plan: PartialPlan,
       options: PlanningOptions,
       currentTime: Int
@@ -203,6 +282,33 @@ object PlanningActor {
     }
     return result
   }
+
+  def possiblePreparations(plan: PartialPlan,
+      options: PlanningOptions,
+      currentTime: Int): List[String] = {
+        val potentialTasks = Utils.getPlanningOptions.potentialTasks
+        var preparations = List[String]()
+
+        for (taskName <- potentialTasks) {
+          // Get Abstract Task
+          val abstractTask = plan.pb.tasks.get(taskName)
+          // Get all decompositions of the abstract task
+
+            // For each decomposition, get all subtasks
+
+              // For each subtask, check if arguments do not overlap with the arguments to the global task
+
+              // If not, check if the subtask has dependencies on previous tasks
+
+                // If not, add all unexecuted instantiations of the subtask to the list of preparations
+
+              // Else check for each instantiation if the dependent tasks are in the plan
+
+                // If so, add the instantiation to the list of preparations
+        }
+
+        return preparations
+      }
 
   def combinationsIterator(instances: List[List[String]]): Iterator[List[String]] = {
     instances match {

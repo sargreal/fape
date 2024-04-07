@@ -28,7 +28,8 @@ public class SearchNode {
     public enum Status {
         STABLE, // DO not clean
         PENDING, // not yet expanded
-        EXPANDED // was expanded
+        EXPANDED, // was expanded
+        INCONSISTENT // was expanded and found to be inconsistent
     }
 
     public SearchNode(SearchNode parent, Planner planner) {
@@ -86,6 +87,10 @@ public class SearchNode {
         PartialPlan s = state.get();
         if(status != Status.STABLE)
             releaseMemory();
+    }
+
+    public void setInconsistent() {
+        status = Status.INCONSISTENT;
     }
 
     public void releaseMemory() {
@@ -179,5 +184,14 @@ public class SearchNode {
 
             assert false;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "SearchNode{" +
+                "mID=" + mID +
+                ", depth=" + depth +
+                ", status=" + status +
+                '}';
     }
 }

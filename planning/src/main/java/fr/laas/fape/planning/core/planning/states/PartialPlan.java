@@ -447,6 +447,53 @@ public class PartialPlan implements Reporter {
     }
 
     /**
+     * Remove an action from the plan. This should only be done when repairing or replanning.
+     * See 5.5.4.1 in the thesis.
+     * 
+     * @param a Action to remove.
+     */
+    public void removeAction(Action a) {
+        // remove all assertions, constraints, subtasks, timepoints an pending actions refining a subtask
+        if (!taskNet.contains(a))
+            return;
+        for(Task t : taskNet.children(a)) {
+            TinyLogger.LogInfo("Removing task: "+t);
+            removeTask(t);
+        }
+        for(LogStatement s : a.chronicle().logStatements()) {
+            // TinyLogger.LogInfo("Removing statement: "+s);
+            removeStatement(s);
+        }
+        removeVariables(a.jUsedVariables());
+        TinyLogger.LogInfo("Removing action: "+a);
+        taskNet.remove(a);
+    }
+
+    private void removeTask(Task t) {
+        if (!taskNet.contains(t))
+            return;
+        for (Action subAction : taskNet.children(t)) {
+            if (subAction.status() == ActionStatus.PENDING)
+                removeAction(subAction);
+        }
+        removeVariables(t.jUsedVariables());
+        taskNet.remove(t);
+    }
+
+    private void removeVariables(Set<Variable> vars) {
+        for (Variable v : vars) {
+            if (v instanceof VarRef) {
+                TinyLogger.LogInfo("Removing variable: "+v);
+                csp.bindings().removeVariable((VarRef) v);
+            }
+            if (v instanceof TPRef) {
+                // TinyLogger.LogInfo("Removing timepoint: "+v);
+                csp.stn().removeTimePoint((TPRef) v);
+            }
+        }
+    }
+
+    /**
      * Return all possible values of a global variable.
      *
      * @param var Reference to a global variable
@@ -490,10 +537,15 @@ public class PartialPlan implements Reporter {
      * same function and their variables are unifiable).
      */
     public boolean unifiable(ParameterizedStateVariable a, ParameterizedStateVariable b) {
-        if (a.func().equals(b.func())) {
-            return unifiable(a.args(), b.args());
-        } else {
-            return false;
+        try {
+            if (a.func().equals(b.func())) {
+                return unifiable(a.args(), b.args());
+            } else {
+                return false;
+            }
+        } catch (Exception e) {
+            // System.out.println("Error while unifying " + a + " and " + b);
+            throw e;
         }
     }
 
@@ -506,8 +558,13 @@ public class PartialPlan implements Reporter {
     public boolean unifiable(VarRef[] as, VarRef[] bs) {
         assert as.length == bs.length : "The two lists have different size.";
         for (int i = 0; i < as.length ; i++) {
-            if (!unifiable(as[i], bs[i])) {
-                return false;
+            try {
+                if (!unifiable(as[i], bs[i])) {
+                    return false;
+                }
+            } catch (Exception e) {
+                // System.out.println("Error while unifying " + as[i] + " and " + bs[i]);
+                throw e;
             }
         }
         return true;
@@ -538,6 +595,7 @@ public class PartialPlan implements Reporter {
         taskNet.insert(act);
 
         apply(act.chronicle());
+        // System.out.println(act.chronicle());
 
         // make sure that this action is executed after earliest execution.
         csp.stn().enforceMinDelay(pb.start(), act.start(), getEarliestExecution());
@@ -1137,7 +1195,16 @@ public class PartialPlan implements Reporter {
 
     public List<String> domainOf(VarRef var) { return csp.bindings().domainOf(var); }
 
-    public int domainSizeOf(VarRef var) { return csp.bindings().domainSize(var); }
+    public int domainSizeOf(VarRef var) { 
+        try {
+            
+            return csp.bindings().domainSize(var); 
+        } catch (Exception e) {
+            // TODO: handle exception
+            // System.out.println("Error while getting domain size of variable " + var + " with type " + var.getType());
+            throw e;
+        }
+    }
 
     public void addUnificationConstraint(VarRef a, VarRef b) { csp.bindings().AddUnificationConstraint(a, b); }
 

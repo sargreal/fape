@@ -109,7 +109,7 @@ public class MinSpanTreeExtFull implements StateExtension {
     }
 
     public int getCurrentCost() {
-        assert hasBeenProcessed();
+        assert hasBeenProcessed() : "Heuristic for plan "+this.st.mID+" has not been computed yet";
         assert additionalCost != -1;
         return currentCost;
     }

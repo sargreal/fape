@@ -19,6 +19,7 @@ class NAryConstraint(val vars:Seq[VarRef], val allowedTuple: ExtensionConstraint
   override def involves(v: VarRef) = varSet.contains(v.id)
 
   override def propagate(csp: BindingConstraintNetwork) {
+    // println(toString())
 
     val domains = vars.map(v => csp.rawDomain(v).vals).toArray
     val restrictedDomains = allowedTuple.restrictedDomains(domains)
@@ -29,6 +30,8 @@ class NAryConstraint(val vars:Seq[VarRef], val allowedTuple: ExtensionConstraint
       }
     }
   }
+
+  override def toString: String = s"NAryConstraint($vars, $allowedTuple)"
 }
 
 class InSetConstraint(val left:VarRef, val right:Set[VarRef]) extends Constraint {

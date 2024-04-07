@@ -222,7 +222,7 @@ public class Planning {
         if (commandLineConfig.getString("output").equals("stdout")) {
             writer = new OutputStreamWriter(System.out);
         } else {
-            writer = new FileWriter(commandLineConfig.getString("output"));
+            writer = new FileWriter(commandLineConfig.getString("output"), true);
         }
 
         TinyLogger.logging = commandLineConfig.getBoolean("verbose");
@@ -257,7 +257,7 @@ public class Planning {
 
         // output format
         writer.write("iter, runtime, planning-time, anml-file, opened-states, generated-states, " +
-                "fast-forwarded, sol-depth, flaw-sel, plan-sel, reachability, fast-forward, ae\n");
+                "fast-forwarded, sol-depth, makespan, flaw-sel, plan-sel, reachability, fast-forward, ae\n");
 
         boolean allSolved = true;
 
@@ -437,6 +437,7 @@ public class Planning {
                                 + planner.numGeneratedPartialPlans + ", "
                                 + planner.numFastForwardedPartialPlans + ", "
                                 + (failure ? "-" : sol.getDepth()) + ", "
+                                + (failure ? "-" : sol.getMakespan()) + ", "
                                 + Utils.print(planner.options.flawSelStrategies, ":") + ", "
                                 + Utils.print(planner.options.planSelStrategies, ":") + ", "
                                 + reachStr + ", "

@@ -67,4 +67,9 @@ abstract class DirectedIIAdjList[EL, E <: Edge[Int]](val mOutEdges : mutable.Arr
   def contains(v:Int): Boolean = 0 <= v && v < numVertices
 
   def numVertices = mNumVertices
+
+  def deleteVertex(v:Int) {
+    throw new UnsupportedOperationException("Cannot remove a vertex by reference in an adjacency list " +
+      "since the size of the adjacency list cannot be reduced without losing vertexes.")
+  }
 }

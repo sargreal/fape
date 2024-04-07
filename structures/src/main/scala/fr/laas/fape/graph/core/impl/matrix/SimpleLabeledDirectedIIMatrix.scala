@@ -98,4 +98,9 @@ class SimpleLabeledDirectedIIMatrix[EL >: Null : ClassTag](
       newMatrix(i) = matrix(i).clone()
     new SimpleLabeledDirectedIIMatrix[EL](capacity, numVertices, newMatrix)
   }
+
+  def deleteVertex(v: Int): Unit = {
+    throw new UnsupportedOperationException("Cannot remove a vertex by reference in a matrix " +
+      "since the size of the matrix cannot be reduced without losing vertexes.")
+  }
 }

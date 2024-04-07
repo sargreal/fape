@@ -17,6 +17,7 @@ import fr.laas.fape.structures.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -371,11 +372,15 @@ public class TaskNetworkManager implements Reporter {
     }
 
     public List<Action> children(Task t) {
-        return network.jChildren(new TNNode(t)).stream().map(TNNode::asAction).collect(Collectors.toList());
+        if (contains(t))
+            return network.jChildren(new TNNode(t)).stream().map(TNNode::asAction).collect(Collectors.toList());
+        return Collections.emptyList();
     }
 
     public List<Task> children(Action a) {
-        return network.jChildren(new TNNode(a)).stream().map(TNNode::asTask).collect(Collectors.toList());
+        if (contains(a))
+            return network.jChildren(new TNNode(a)).stream().map(TNNode::asTask).collect(Collectors.toList());
+        return Collections.emptyList();
     }
 
     /**
@@ -468,5 +473,32 @@ public class TaskNetworkManager implements Reporter {
 
     public boolean contains(Task t) {
         return network.contains(new TNNode(t));
+    }
+
+    public void remove(Action a) {
+        if (!contains(a)) {
+            return;
+        }
+        if(!a.hasParent()) {
+            numRoots--;
+        }
+        if(a.mustBeMotivated() && !isSupporting(a))
+            numUnmotivatedActions--;
+        network.deleteVertex(new TNNode(a));
+        actions.remove(a);
+        clearCache();
+    }
+
+    public void remove(Task t) {
+        if (!contains(t)) {
+            return;
+        }
+        if(!t.hasParent()) {
+            numRoots--;
+        }
+        if(!isSupported(t))
+            numOpenTasks--;
+        network.deleteVertex(new TNNode(t));
+        clearCache();
     }
 }

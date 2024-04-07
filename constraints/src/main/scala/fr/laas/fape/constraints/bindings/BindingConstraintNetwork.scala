@@ -119,7 +119,17 @@ class BindingConstraintNetwork(toCopy: Option[BindingConstraintNetwork]) {
     id
   }
 
-  def rawDomain(v: VarRef) : Domain = domains(domID(v))
+  def  rawDomain(v: VarRef) : Domain = {
+    assert(domID(v) >= 0, s"Variable $v is not recorded in the network (domID = ${domID(v)})")
+    assert(domID(v) < domains.length, s"Variable $v is not recorded in the network (domID = ${domID(v)})")
+    try {
+      domains(domID(v))
+    } catch {
+      case e: ArrayIndexOutOfBoundsException =>
+        // println(domID(v), v)
+        throw e
+    }
+  }
 
   def isDiff(v1: VarRef, v2: VarRef): Boolean = {
     assert(different(domID(v1)).get(domID(v2)) == different(domID(v2)).get(domID(v1)))
@@ -187,7 +197,9 @@ class BindingConstraintNetwork(toCopy: Option[BindingConstraintNetwork]) {
   def typeOf(v: VarRef): Type = v.typ
 
   def unifiable(a: VarRef, b: VarRef): Boolean =
-    domID(a) == domID(b) || (!isDiff(a, b) && rawDomain(a).hasOneCommonElement(rawDomain(b)))
+    domID(a) == domID(b) || 
+    (!isDiff(a, b) && 
+    rawDomain(a).hasOneCommonElement(rawDomain(b)))
 
   def domainOf(v: VarRef): util.List[String] =
     rawDomain(v).values().asScala.map(values(_)).toList.asJava
@@ -249,6 +261,7 @@ class BindingConstraintNetwork(toCopy: Option[BindingConstraintNetwork]) {
   }
 
   def addConstraint(c: Constraint): Unit = {
+    // println("Adding constraint:",c)
     constraints += c
     for(v <- c.vars) {
       if(!watchers.contains(v))
@@ -450,6 +463,32 @@ class BindingConstraintNetwork(toCopy: Option[BindingConstraintNetwork]) {
   def addIntVariable(v: VarRef, domain: util.Collection[Integer]): Unit = {
     assert(v.typ.isNumeric)
     addVariable(v, intValuesAsDomain(domain))
+  }
+
+  def removeVariable(v: VarRef): Unit = {
+    
+    if (v.toString.equals("true") || v.toString.equals("false")) {
+      System.err.println("Cannot remove basic boolean variables")
+      return
+    }
+    val domID = domIds(v.id)
+    if(domID != -1) {
+      // unusedDomainIds += domID
+      domIds(v.id) = -1
+      // vars(domID) = new ArrayBuffer[VarRef]()
+      // domains(domID) = null
+      for (constraint <- constraints) {
+        if (constraint.involves(v)) {
+          constraints = constraints - constraint
+        }
+      }
+      for (constraint <- pendingConstraints) {
+        if (constraint.involves(v)) {
+          pendingConstraints = pendingConstraints - constraint
+        }
+      }
+      watchers.remove(v)
+    }
   }
 
   @Deprecated
